@@ -22,12 +22,12 @@ The paper does not publish the exact Sequential baseline prompt text or its exac
 3. Reviews and ratings are excluded from the Sequential prompt.
 4. Candidate items are represented by canonical product title plus ASIN.
 5. The target is never marked, highlighted, or otherwise revealed in the prompt.
-6. The model is instructed to return one JSON object:
-   `{"ranking":["ASIN_1",...,"ASIN_20"]}`
-7. A response is valid only if `ranking` is a complete permutation of all 20 candidate ASINs: no omissions, no duplicates, and no out-of-candidate items.
-8. Invalid rankings are not silently repaired. The initial pilot is fail-fast so malformed output can be inspected before a larger run.
-9. Generation settings for the initial pilot are temperature `0.0`, maximum output length `512`, and request seed `42` where supported by the local backend.
-10. The experiment is resumable and writes one result record after each completed session.
+6. The model is instructed to return exactly one valid JSON object with one key named `ranking`.
+7. The `ranking` value must be an array whose length exactly equals the candidate count (20 in the frozen pilot), containing every candidate ASIN exactly once.
+8. The prompt intentionally avoids pseudo-JSON examples with placeholders or ellipses. A first pilot attempt used an illustrative pattern containing `...`; the local 3B model returned only three ranking entries. This was treated as a prompt-formatting defect in our reproduction, not as a recommendation result, and the prompt was corrected to state the exact array length in prose.
+9. Invalid rankings are not silently repaired or padded. The initial pilot remains fail-fast so malformed output can be inspected before a larger run.
+10. Generation settings for the initial pilot are temperature `0.0`, maximum output length `512`, and request seed `42` where supported by the local backend.
+11. The experiment is resumable and writes one result record after each attempted session. Failed records are retried because resume skips only sessions with `status="ok"`.
 
 ## Active model decision
 The user has explicitly chosen to continue with the currently available local model:
