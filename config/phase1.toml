@@ -1,0 +1,16 @@
+[data]
+reviews_path = "Video_Games_5.json.gz"
+metadata_path = "meta_Video_Games.json.gz"
+
+[experiment]
+min_history = 3
+candidate_size = 20
+candidate_seed = 42
+user_selection_seed = 20260905
+max_users = 20
+
+[output]
+directory = "outputs/phase1"
+write_interactions = true
+write_items = true
+write_sessions = true
