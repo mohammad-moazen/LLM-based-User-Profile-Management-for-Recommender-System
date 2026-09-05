@@ -45,49 +45,64 @@ class SequentialBaselineTests(unittest.TestCase):
             "C3": "Candidate Three",
         }
 
-    def test_prompt_uses_purchase_history_but_not_reviews_or_ratings(self):
+    def test_prompt_uses_purchase_titles_but_not_reviews_ratings_or_history_asins(self):
         messages = build_sequential_messages(self.history, self.candidates, self.titles)
         prompt = messages[1]["content"]
         self.assertLess(prompt.index("First Product"), prompt.index("Second Product"))
-        self.assertIn("H1", prompt)
-        self.assertIn("H2", prompt)
+        self.assertNotIn("H1", prompt)
+        self.assertNotIn("H2", prompt)
         self.assertNotIn("SECRET REVIEW TEXT", prompt)
         self.assertNotIn("ANOTHER SECRET REVIEW", prompt)
         self.assertNotIn("1.0", prompt)
         self.assertNotIn("5.0", prompt)
 
-    def test_prompt_requires_exact_count_without_pseudo_json_ellipsis(self):
+    def test_prompt_numbers_candidates_without_exposing_candidate_asins(self):
         messages = build_sequential_messages(self.history, self.candidates, self.titles)
         prompt = messages[1]["content"]
-        self.assertIn("exactly 3 strings", prompt)
-        self.assertIn("every candidate ASIN exactly once", prompt)
-        self.assertIn("do not use an ellipsis", prompt)
-        self.assertNotIn('"ASIN_1","ASIN_2",...', prompt)
+        self.assertIn("Candidate 1: Candidate One", prompt)
+        self.assertIn("Candidate 2: Candidate Two", prompt)
+        self.assertIn("Candidate 3: Candidate Three", prompt)
+        self.assertNotIn("C1", prompt)
+        self.assertNotIn("C2", prompt)
+        self.assertNotIn("C3", prompt)
+        self.assertIn("every integer from 1 through 3 exactly once", prompt)
+        self.assertIn("Do not return product names, ASINs, purchase-history numbers", prompt)
 
-    def test_complete_json_ranking_is_accepted(self):
+    def test_complete_integer_ranking_is_mapped_back_to_asins(self):
         ranking = parse_complete_ranking(
-            '{"ranking":["C2","C1","C3"]}',
+            '{"ranking":[2,1,3]}',
             self.candidates,
         )
         self.assertEqual(ranking, ["C2", "C1", "C3"])
         self.assertEqual(target_rank(ranking, "C1"), 2)
 
+    def test_digit_strings_are_accepted_as_serialization_tolerance(self):
+        ranking = parse_complete_ranking(
+            '{"ranking":["3","1","2"]}',
+            self.candidates,
+        )
+        self.assertEqual(ranking, ["C3", "C1", "C2"])
+
     def test_markdown_fenced_json_is_accepted(self):
         ranking = parse_complete_ranking(
-            '```json\n{"ranking":["C1","C2","C3"]}\n```',
+            '```json\n{"ranking":[1,2,3]}\n```',
             self.candidates,
         )
         self.assertEqual(ranking, self.candidates)
 
     def test_duplicate_or_incomplete_ranking_is_rejected(self):
         with self.assertRaises(ValueError):
-            parse_complete_ranking('{"ranking":["C1","C1","C3"]}', self.candidates)
+            parse_complete_ranking('{"ranking":[1,1,3]}', self.candidates)
         with self.assertRaises(ValueError):
-            parse_complete_ranking('{"ranking":["C1","C2"]}', self.candidates)
+            parse_complete_ranking('{"ranking":[1,2]}', self.candidates)
 
-    def test_unexpected_candidate_is_rejected(self):
+    def test_out_of_range_candidate_number_is_rejected(self):
         with self.assertRaises(ValueError):
-            parse_complete_ranking('{"ranking":["C1","C2","OTHER"]}', self.candidates)
+            parse_complete_ranking('{"ranking":[1,2,4]}', self.candidates)
+
+    def test_product_or_asin_strings_are_not_silently_repaired(self):
+        with self.assertRaises(ValueError):
+            parse_complete_ranking('{"ranking":["C1","C2","C3"]}', self.candidates)
 
 
 if __name__ == "__main__":
