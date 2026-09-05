@@ -143,3 +143,25 @@ Use this file as a chronological record of meaningful runs and debugging milesto
 - Model/backend: not used in Phase 1
 - Interpretation: Phase 1 implementation is ready for the first full local run against the downloaded Amazon files.
 - Next action: run `python scripts/run_phase1.py` locally and append exact post-cleaning/session counts before freezing Phase 1.
+
+## 2026-09-05 — First real Phase 1 session generation success
+- Phase: 1
+- Dataset/category: Amazon Review Data 2018 / Video Games 5-core
+- Configuration: default `phase1.toml` settings (`min_history=3`, `candidate_size=20`, deterministic seeds, 20 selected users)
+- Real local pipeline result: completed successfully through session generation.
+- Observed first generated session:
+  - session id: `A24ZRTTC3SPX8C:4`
+  - user id: `A24ZRTTC3SPX8C`
+  - observed history length: 3
+  - target is the fourth cleaned interaction, confirming the intended `min_history=3` semantics
+  - history consists of three gaming-keyboard purchases
+  - target is a Logitech G502 gaming mouse
+  - candidate set contains exactly 20 items
+  - target appears exactly once in the candidate set, at displayed candidate position 17
+  - remaining candidates are random non-interacted Video Games items, consistent with the current negative-sampling policy
+- Pipeline status: `Phase 1 pipeline completed successfully.`
+- Interpretation:
+  - real-data chronology, target construction, candidate-set size, target inclusion, and deterministic candidate shuffling are functioning end-to-end
+  - the sample is semantically plausible: a user with repeated gaming-keyboard purchases next buys a gaming mouse; the random negatives need not be semantically close because the paper samples random non-interacted items
+  - Phase 1 is not yet formally frozen because the exact `PURE PHASE 1 REPORT` post-cleaning counts and generated-session counts still need to be recorded
+- Next action: capture the `PURE PHASE 1 REPORT` summary from the same run, validate its final counts, then freeze Phase 1 and move to the local-model smoke test / Phase 2 Sequential LLM baseline.
