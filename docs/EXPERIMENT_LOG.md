@@ -112,3 +112,34 @@ Use this file as a chronological record of meaningful runs and debugging milesto
 - Policy status: frozen as `docs/PREPROCESSING_POLICY.md` v1
 - Important provenance note: the PURE paper does not document these edge-case cleaning rules; they are explicit decisions in this reproduction and must be reported as such.
 - Next action: implement the canonical processed-data pipeline exactly according to preprocessing-policy v1, then report post-cleaning counts before generating recommendation sessions.
+
+## 2026-09-05 — Phase 1 implementation and synthetic validation
+- Phase: 1
+- Dataset/category: implementation tested with synthetic data only; real Video Games run pending
+- Configuration defaults:
+  - `min_history = 3`
+  - `candidate_size = 20`
+  - `candidate_seed = 42`
+  - `user_selection_seed = 20260905`
+  - `max_users = 20`
+- Implemented:
+  - canonical preprocessing-policy v1
+  - chronological history construction with source-row tie-breaking
+  - deterministic eligible-user subset selection
+  - continuous recommendation-session generation beginning with purchase 4
+  - one ground-truth item + 19 non-interacted negative candidates
+  - full-history negative exclusion to prevent candidate leakage
+  - deterministic candidate sampling and shuffling
+  - NDCG@1/@5/@10/@20 helper logic
+  - paper-style aggregation: mean across sessions within user, then mean across users
+  - local compressed outputs for canonical items/interactions/sessions and JSON audit report
+- Synthetic verification performed before push:
+  - Python compilation: PASS
+  - unit tests: 9/9 PASS
+  - verified first target is interaction 4 when `min_history=3`
+  - verified candidate sets are deterministic
+  - verified negatives never overlap any item in the user's cleaned full history
+  - verified NDCG rank discounts and equal-weight user aggregation
+- Model/backend: not used in Phase 1
+- Interpretation: Phase 1 implementation is ready for the first full local run against the downloaded Amazon files.
+- Next action: run `python scripts/run_phase1.py` locally and append exact post-cleaning/session counts before freezing Phase 1.
