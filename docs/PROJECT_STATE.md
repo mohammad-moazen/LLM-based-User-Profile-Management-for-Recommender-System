@@ -7,7 +7,7 @@ Step-by-step Python reproduction of PURE from the paper **LLM-based User Profile
 `feature/pure-phase1`
 
 ## Current phase
-Phase 1 implemented in code; awaiting the first full local run on the downloaded Video Games data. Local inference setup remains pending in parallel.
+Phase 1 has completed its first successful full local run through real-data recommendation-session generation. Exact post-cleaning/report counts from the `PURE PHASE 1 REPORT` still need to be captured before Phase 1 is formally frozen. Local inference setup remains pending in parallel.
 
 ## Agreed environment
 - Development: Python + VS Code
@@ -84,6 +84,22 @@ Important provenance rule: these edge-case cleaning decisions are part of this r
 - `tests/`: synthetic unit tests for eligibility, first target timestep, deterministic candidate construction, leakage prevention, and NDCG behavior
 - local generated outputs go under `outputs/phase1/` and remain ignored by Git
 
+## Real-data Phase 1 validation status
+Confirmed from the first real local run:
+- `run_phase1.py` completed successfully
+- first session id: `A24ZRTTC3SPX8C:4`
+- observed history contains exactly 3 interactions
+- target is the 4th cleaned interaction
+- candidate set contains exactly 20 items
+- ground-truth target appears exactly once and was shuffled to candidate position 17 in the displayed sample
+- sample history (gaming keyboards) and target (gaming mouse) are semantically plausible
+- random negative candidates span unrelated Video Games items, which is expected under the paper-aligned random non-interacted sampling setup
+
+Still required before Phase 1 freeze:
+- capture exact post-cleaning interaction/user/item counts from `PURE PHASE 1 REPORT`
+- capture exact eligible-user and generated-session counts
+- confirm no report-level validation failures or anomalies
+
 ## Current implementation status
 Completed:
 - Repository initialization and branch setup
@@ -98,14 +114,13 @@ Completed:
 - Candidate leakage checks
 - NDCG metric implementation and paper-style aggregation
 - Synthetic unit tests; 9 tests passed before push
+- First real local Phase 1 end-to-end session-generation run: PASS
 
 Pending next:
-1. Pull and run Phase 1 against the real local Video Games files
-2. Record exact post-cleaning counts and generated-session counts in `EXPERIMENT_LOG.md`
-3. Resolve any real-data issues found by the first run
-4. Freeze Phase 1 output once validation passes
-5. Validate the local Bionic / LM Studio endpoint with a minimal Python smoke test
-6. Begin Phase 2 Sequential LLM baseline before PURE modules
+1. Record exact `PURE PHASE 1 REPORT` counts from the successful real run
+2. Freeze Phase 1 if report-level validation is clean
+3. Validate the local Bionic / LM Studio endpoint with a minimal Python smoke test
+4. Begin Phase 2 Sequential LLM baseline before PURE modules
 
 ## Working rule
 This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, cleaning policy, or next task changes. Important experiment runs are appended to `EXPERIMENT_LOG.md`; methodology decisions belong in dedicated docs such as `PREPROCESSING_POLICY.md`.
