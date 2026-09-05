@@ -7,7 +7,7 @@ Step-by-step Python reproduction of PURE from the paper **LLM-based User Profile
 `feature/pure-phase1`
 
 ## Current phase
-Phase 0 complete for dataset inspection/validation; moving into Phase 1 canonical data pipeline. Local inference setup remains pending in parallel.
+Phase 1 implemented in code; awaiting the first full local run on the downloaded Video Games data. Local inference setup remains pending in parallel.
 
 ## Agreed environment
 - Development: Python + VS Code
@@ -59,30 +59,6 @@ For each user, interactions are sorted chronologically. The recommender predicts
 2. Profile Updater
 3. LLM Recommender
 
-## Confirmed full-dataset validation results
-- Metadata records: 84,819
-- Unique metadata ASINs: 71,911
-- Duplicate metadata ASINs: 12,908
-- Duplicate metadata ASIN groups with conflicting non-empty titles: 0
-- Review records: 497,577
-- Unique users: 55,217
-- Unique reviewed items: 17,408
-- Review rows missing required fields: 158
-- Review rows without usable metadata title: 1,262 across 19 ASINs
-- Review-to-metadata coverage: 99.7464%
-- Unique `(user, item)` pairs: 473,427
-- Repeated `(user, item)` pairs: 23,937
-- Repeated pairs identical on PURE-relevant fields: 23,361
-- Repeated pairs with different timestamp: 389
-- Repeated pairs with different review text: 539
-- Repeated pairs with different rating: 133
-- Users with >=3 raw interactions: 55,211
-- Users with >=4 raw interactions: 55,210
-- Users with >=5 raw interactions: 55,200
-- Median raw history length: 6
-- Mean raw history length: 9.01
-- Maximum raw history length: 815
-
 ## Frozen preprocessing policy v1
 Canonical policy is documented in `docs/PREPROCESSING_POLICY.md`.
 
@@ -94,29 +70,42 @@ Key rules:
 5. Exclude ambiguous repeated `(user, item)` groups when timestamp, rating, or review text conflicts.
 6. Sort chronologically by timestamp and use raw source-row order only as a deterministic tie-breaker for equal timestamps.
 7. Do not rerun iterative 5-core filtering after cleaning; determine eligibility from cleaned histories with configurable `min_history`.
-8. For candidate sampling, use one target plus 19 negatives sampled without replacement from valid-title items the user never interacts with anywhere in the cleaned full history; use a recorded deterministic seed and shuffle candidate order deterministically.
+8. Candidate items come from products present in the cleaned canonical interaction dataset; each session uses one target plus 19 negatives sampled without replacement from items the user never interacts with anywhere in the cleaned full history. Sampling and candidate ordering are deterministic under recorded seeds.
 
 Important provenance rule: these edge-case cleaning decisions are part of this reproduction. The paper does not document them, so they must never be attributed to the paper authors.
+
+## Phase 1 implementation now present
+- `config/phase1.toml`: checked-in deterministic experiment settings
+- `src/pure_recommender/config.py`: typed config loader
+- `src/pure_recommender/data/preprocessing.py`: frozen preprocessing-policy v1
+- `src/pure_recommender/data/sessions.py`: chronological histories, deterministic user selection, 20-item candidate construction, leakage validation
+- `src/pure_recommender/evaluation/metrics.py`: NDCG@k for the one-ground-truth setup plus paper-style user-level aggregation
+- `scripts/run_phase1.py`: full local Phase 1 runner and audit report writer
+- `tests/`: synthetic unit tests for eligibility, first target timestep, deterministic candidate construction, leakage prevention, and NDCG behavior
+- local generated outputs go under `outputs/phase1/` and remain ignored by Git
 
 ## Current implementation status
 Completed:
 - Repository initialization and branch setup
-- Dataset schema inspection script
-- `.gitignore` protections for dataset/model artifacts
-- Full-dataset validation script
-- Full Video Games validation run and documentation
+- Dataset schema inspection and validation
 - Dataset anomaly analysis
 - Frozen preprocessing policy v1
-- Documentation framework: `PROJECT_STATE.md`, `EXPERIMENT_PLAN.md`, `EXPERIMENT_LOG.md`, `PREPROCESSING_POLICY.md`
+- Documentation framework
+- Canonical preprocessing implementation
+- Chronological history construction
+- Deterministic small-user selection
+- Deterministic candidate generation with 1 target + 19 negatives
+- Candidate leakage checks
+- NDCG metric implementation and paper-style aggregation
+- Synthetic unit tests; 9 tests passed before push
 
 Pending next:
-1. Implement canonical processed-data pipeline according to preprocessing-policy v1
-2. Run pipeline locally and record post-cleaning counts
-3. Build chronological user histories and deterministic small-user subset selection
-4. Build deterministic candidate sampling
-5. Implement NDCG metrics and unit tests
-6. Validate local LLM endpoint with a minimal Python smoke test
-7. Implement Sequential baseline before PURE modules
+1. Pull and run Phase 1 against the real local Video Games files
+2. Record exact post-cleaning counts and generated-session counts in `EXPERIMENT_LOG.md`
+3. Resolve any real-data issues found by the first run
+4. Freeze Phase 1 output once validation passes
+5. Validate the local Bionic / LM Studio endpoint with a minimal Python smoke test
+6. Begin Phase 2 Sequential LLM baseline before PURE modules
 
 ## Working rule
 This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, cleaning policy, or next task changes. Important experiment runs are appended to `EXPERIMENT_LOG.md`; methodology decisions belong in dedicated docs such as `PREPROCESSING_POLICY.md`.
