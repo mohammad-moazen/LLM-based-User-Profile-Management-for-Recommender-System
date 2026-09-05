@@ -11,12 +11,17 @@ interactions_path = "outputs/phase1/interactions.jsonl.gz"
 sessions_path = "outputs/phase1/sessions.jsonl.gz"
 
 [experiment]
-# Start with a very small real-data pilot so prompt formatting and ranking
-# parsing can be inspected before spending time on all 94 frozen sessions.
-# Set to 0 later to run every frozen Phase 1 session.
-max_sessions = 3
+# The 3-session real-data pilot has passed with the numbered-candidate output
+# protocol. Run every frozen Phase 1 session. Resume remains enabled so the
+# three already-successful pilot sessions are skipped automatically.
+max_sessions = 0
 resume = true
-fail_fast = true
+
+# For the full 94-session run, continue past any malformed individual model
+# output. Invalid sessions are logged as errors and are never included in NDCG.
+# A run with any such errors finishes as INCOMPLETE and the failed sessions can
+# be retried later because resume skips only status="ok" records.
+fail_fast = false
 
 [generation]
 temperature = 0.0
