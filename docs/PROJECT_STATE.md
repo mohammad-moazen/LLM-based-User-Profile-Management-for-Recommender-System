@@ -7,19 +7,30 @@ Step-by-step Python reproduction of PURE from the paper **LLM-based User Profile
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS.** The canonical data and evaluation pipeline has completed a successful real-data run on Amazon Video Games 5-core. The next task is local-model endpoint validation, followed by Phase 2 Sequential LLM baseline.
+**Phase 1 frozen / PASS.** The canonical data and evaluation pipeline has completed a successful real-data run on Amazon Video Games 5-core. The local OpenAI-compatible server is now confirmed reachable through `/v1/models`. A backend-agnostic Python LLM client and smoke-test script have been added; the next action is to run that smoke test locally, then load the exact paper-reference model before accepting Phase 2 results as paper-aligned.
 
 ## Agreed environment
 - Development: Python + VS Code
 - Repository workflow: ChatGPT pushes incremental code to GitHub; user pulls and runs locally
 - Local-only LLM inference; no online inference APIs
 - Preferred local serving path: Bionic / LM Studio local model API using an OpenAI-compatible localhost endpoint
+- Confirmed local endpoint: `http://127.0.0.1:1234/v1`
 - Architecture must keep the LLM backend abstract so it can later switch to vLLM, llama.cpp, or another local OpenAI-compatible backend
 - Reference reproduction model: `Llama-3.2-3B-Instruct`
 - Initial quantization target: GGUF `Q8_0`; fall back to `Q6_K`, `Q5_K_M`, or `Q4_K_M` if memory/performance requires it
 - Initial context length target: 8192 tokens
 - User hardware: Intel i7-13700H, 32 GB RAM, NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM
 - Models and datasets must be stored outside drive C when possible
+
+## Local model endpoint status
+`GET /v1/models` has been confirmed reachable from PowerShell.
+
+Observed exposed model identifiers include:
+- `llama-3.2-3b-instruct-uncensored`
+- `qwen3-1.7b`
+- at least one embedding model
+
+Important: `llama-3.2-3b-instruct-uncensored` is treated only as a derivative model suitable for connectivity testing. It is **not** silently equated with the paper's `Llama-3.2-3B-Instruct` reference model. This distinction is documented in `docs/MODEL_RUNTIME_POLICY.md`.
 
 ## Agreed dataset
 Amazon Review Data 2018, Video Games 5-core + Video Games metadata.
@@ -83,6 +94,16 @@ Important provenance rule: these edge-case cleaning decisions are part of this r
 - `scripts/run_phase1.py`: full local Phase 1 runner and audit report writer
 - `tests/`: synthetic unit tests for eligibility, first target timestep, deterministic candidate construction, leakage prevention, and NDCG behavior
 - local generated outputs go under `outputs/phase1/` and remain ignored by Git
+
+## Local LLM integration implementation
+- `config/local_llm.toml`: local endpoint/model/generation settings for smoke testing
+- `src/pure_recommender/llm/config.py`: typed local-LLM config loader
+- `src/pure_recommender/llm/client.py`: standard-library OpenAI-compatible client for `/v1/models` and `/v1/chat/completions`
+- `scripts/smoke_test_local_llm.py`: end-to-end Python -> localhost -> model inference test
+- `tests/test_llm_client.py`: mock HTTP tests for model listing and chat completion
+- `docs/MODEL_RUNTIME_POLICY.md`: explicit distinction between runtime smoke-test models and the paper-reference model
+
+The LLM code is intentionally independent from LM Studio-specific SDK calls so the backend can later be changed by configuration.
 
 ## Frozen real-data Phase 1 result
 From the successful local run:
@@ -148,14 +169,17 @@ Completed:
 - Synthetic unit tests; 9/9 passed
 - Real local Phase 1 end-to-end run: PASS
 - Phase 1 formal freeze: PASS
+- Local OpenAI-compatible `/v1/models` endpoint discovery: PASS
+- Backend-agnostic local LLM client and smoke-test implementation: code added, local execution pending
 
 Pending next:
-1. Start Bionic / LM Studio local model server on localhost
-2. Verify `/v1/models` and identify the exact local model identifier
-3. Run a minimal Python chat-completion smoke test with `Llama-3.2-3B-Instruct`
-4. Record exact model quantization, context length, runtime/backend, and generation settings
-5. Implement Phase 2 Sequential baseline using the frozen Phase 1 sessions
-6. Evaluate the 20-user pilot subset before scaling
+1. Pull the new LLM client/smoke-test code
+2. Run the full unit-test suite including `test_llm_client.py`
+3. Run `python scripts/smoke_test_local_llm.py` against the currently exposed local model to verify end-to-end inference
+4. Record latency, usage, and exact runtime/model settings from the smoke test
+5. Load the intended `Llama-3.2-3B-Instruct` reference model before treating Phase 2 metrics as paper-aligned
+6. Record exact quantization, context length, GPU offload, runtime/backend version, and generation settings
+7. Implement Phase 2 Sequential baseline using the frozen 94-session pilot
 
 ## Working rule
-This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, cleaning policy, or next task changes. Important experiment runs are appended to `EXPERIMENT_LOG.md`; methodology decisions belong in dedicated docs such as `PREPROCESSING_POLICY.md`.
+This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, cleaning policy, or next task changes. Important experiment runs are appended to `EXPERIMENT_LOG.md`; methodology decisions belong in dedicated docs such as `PREPROCESSING_POLICY.md` and `MODEL_RUNTIME_POLICY.md`.
