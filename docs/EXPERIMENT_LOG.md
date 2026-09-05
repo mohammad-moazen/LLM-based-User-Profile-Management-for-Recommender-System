@@ -76,3 +76,39 @@ Use this file as a chronological record of meaningful runs and debugging milesto
   - Duplicate metadata ASINs and repeated user-item interactions are significant enough that their semantics must be inspected before final preprocessing rules are fixed.
   - A small number of users have fewer than five observed rows despite using the distributed 5-core file; the experiment pipeline will apply an explicit minimum-history eligibility rule rather than relying on the dataset label alone.
 - Next action: inspect duplicate metadata records, repeated user-item interactions, missing-required review rows, and metadata misses; then freeze deterministic cleaning rules before producing processed data.
+
+## 2026-09-05 — Dataset anomaly analysis and preprocessing-policy freeze
+- Git commit containing anomaly-analysis script: `90194676eb3d15abd89b84cbfb98e88a3e6156c0`
+- Phase: 0
+- Dataset/category: Amazon Review Data 2018 / Video Games 5-core
+- Metadata anomaly results:
+  - total metadata rows: 84,819
+  - unique ASINs: 71,911
+  - duplicate ASINs: 12,908
+  - duplicate ASIN groups with more than one distinct non-empty title: 0
+  - rows with empty/invalid title: 11
+- Review required-field results:
+  - total review rows: 497,577
+  - rows missing one or more required PURE fields: 158
+  - observed examples are missing `reviewText`
+- Review-to-metadata miss results:
+  - review rows without a usable title: 1,262
+  - unique affected ASINs: 19
+  - most frequent missing-title ASIN: `B0016C3260` with 418 review rows
+- Repeated `(user, item)` results:
+  - unique pairs before cleaning: 473,427
+  - repeated pairs: 23,937
+  - rows beyond the first occurrence: 24,150
+  - repeated pairs identical on PURE-relevant fields: 23,361
+  - repeated pairs with different timestamp: 389
+  - repeated pairs with different review text: 539
+  - repeated pairs with different rating: 133
+- Interpretation:
+  - metadata duplicates are safe to collapse by ASIN because no duplicate group has conflicting non-empty titles
+  - missing review text should not be imputed from `summary` in the primary reproduction
+  - interactions without a usable metadata title should be removed from the canonical prompt/evaluation dataset
+  - repeated user-item rows cannot safely be treated as repeated purchases because the review dataset does not establish purchase-event semantics
+  - exact repeated user-item groups will therefore be collapsed; conflicting repeated pairs will be excluded conservatively from preprocessing-policy v1
+- Policy status: frozen as `docs/PREPROCESSING_POLICY.md` v1
+- Important provenance note: the PURE paper does not document these edge-case cleaning rules; they are explicit decisions in this reproduction and must be reported as such.
+- Next action: implement the canonical processed-data pipeline exactly according to preprocessing-policy v1, then report post-cleaning counts before generating recommendation sessions.
