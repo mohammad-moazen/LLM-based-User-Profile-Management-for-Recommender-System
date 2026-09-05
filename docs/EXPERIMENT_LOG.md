@@ -165,3 +165,50 @@ Use this file as a chronological record of meaningful runs and debugging milesto
   - the sample is semantically plausible: a user with repeated gaming-keyboard purchases next buys a gaming mouse; the random negatives need not be semantically close because the paper samples random non-interacted items
   - Phase 1 is not yet formally frozen because the exact `PURE PHASE 1 REPORT` post-cleaning counts and generated-session counts still need to be recorded
 - Next action: capture the `PURE PHASE 1 REPORT` summary from the same run, validate its final counts, then freeze Phase 1 and move to the local-model smoke test / Phase 2 Sequential LLM baseline.
+
+## 2026-09-05 — Phase 1 real-data report and freeze
+- Phase: 1
+- Dataset/category: Amazon Review Data 2018 / Video Games 5-core
+- Configuration:
+  - `min_history = 3`
+  - `candidate_size = 20`
+  - `candidate_seed = 42`
+  - selected users = 20
+- Metadata audit:
+  - raw metadata rows: 84,819
+  - unique metadata ASINs: 71,911
+  - duplicate ASIN groups collapsed: 12,908
+  - metadata rows with empty titles: 11
+- Review cleaning audit:
+  - raw review rows: 497,577
+  - rows dropped for missing required fields: 158
+  - rows dropped for missing metadata/title: 1,262 across 19 ASINs
+  - exact repeated `(user,item)` groups collapsed: 22,782
+  - exact duplicate rows removed: 22,799
+  - ambiguous repeated `(user,item)` groups excluded: 576
+  - ambiguous rows excluded: 1,348
+- Canonical dataset after preprocessing-policy v1:
+  - final interactions: 472,010
+  - final users: 55,209
+  - final items: 17,388
+  - users eligible for at least one session with `min_history=3`: 54,451
+  - history length min: 1
+  - history length median: 6.0
+  - history length mean: 8.549511854951186
+  - history length max: 775
+- Session generation:
+  - selected users: 20
+  - generated sessions: 94
+  - candidate size: 20
+  - candidate seed: 42
+  - candidate invariants: PASS
+- Arithmetic consistency check:
+  - `497,577 - 158 - 1,262 - 22,799 - 1,348 = 472,010`, exactly matching the reported final interaction count
+- Interpretation:
+  - the canonical preprocessing audit is internally consistent
+  - real-data candidate invariants pass
+  - the 20-user subset produced 94 continuous recommendation sessions, showing that multiple eligible timesteps per user are being generated as intended
+  - Phase 1 has satisfied the agreed freeze criteria: deterministic preprocessing, chronology, target construction, candidate construction, leakage checks, NDCG infrastructure, unit tests, and a successful real-data run
+- Status: **PHASE 1 FROZEN / PASS**
+- Model/backend: not used in Phase 1
+- Next action: configure and validate the local Bionic / LM Studio OpenAI-compatible endpoint using the local Llama-3.2-3B-Instruct model, then begin Phase 2 Sequential LLM baseline on the frozen Phase 1 sessions.
