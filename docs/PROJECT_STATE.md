@@ -7,136 +7,62 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential pilot implemented and ready for local execution.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential pilot is in prompt-validation/debugging.**
 
 The user has explicitly chosen to continue with the currently available local derivative model `llama-3.2-3b-instruct-uncensored`. Phase 2 results produced with this model are valid project experiments but must be labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
-## Agreed environment
+## Environment
 - Development: Python + VS Code
 - Repository workflow: ChatGPT pushes incremental code to GitHub; user pulls and runs locally
 - Local-only LLM inference; no online inference APIs
 - Runtime: Bionic / LM Studio local OpenAI-compatible server
 - Confirmed endpoint: `http://127.0.0.1:1234/v1`
-- Backend abstraction remains OpenAI-compatible so a later switch to vLLM, llama.cpp, or another local backend does not require rewriting PURE modules
-- User hardware: Intel i7-13700H, 32 GB RAM, NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM
-- Models and datasets should remain outside drive C when possible
+- Backend abstraction: OpenAI-compatible HTTP client
+- Hardware: Intel i7-13700H, 32 GB RAM, NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM
 
 ## Local LLM status
 Confirmed:
 - `GET /v1/models`: PASS
 - Python chat completion through localhost: PASS
-- full regression suite before Phase 2 implementation: 12/12 PASS
-- localhost proxy interception bug fixed; local client explicitly bypasses environment/system HTTP proxies
+- localhost proxy interception bug fixed
+- full regression suite before Sequential pilot: PASS
 
-Active model identifier:
+Active model:
 - `llama-3.2-3b-instruct-uncensored`
 
-Other observed local models include `qwen3-1.7b` and at least one embedding model.
+Model policy: `docs/MODEL_RUNTIME_POLICY.md`.
 
-Model policy is documented in `docs/MODEL_RUNTIME_POLICY.md`.
+## Dataset and frozen Phase 1
+Dataset: Amazon Review Data 2018 / Video Games 5-core + metadata.
 
-## Paper reference model vs active model
-Paper reference backbone:
-- `Llama-3.2-3B-Instruct`
+Frozen preprocessing policy: `docs/PREPROCESSING_POLICY.md`.
 
-Active project model by explicit user decision:
-- `llama-3.2-3b-instruct-uncensored`
-
-Therefore:
-- current Phase 2 metrics are **not** exact paper-model reproduction;
-- Phase 1 data/evaluation protocol remains unchanged and paper-oriented;
-- an exact-reference model run can be added later as a separate experiment if desired.
-
-## Agreed dataset
-Amazon Review Data 2018, Video Games 5-core + Video Games metadata.
-
-Local raw files:
-- `Video_Games_5.json.gz`
-- `meta_Video_Games.json.gz`
-
-Raw datasets, processed datasets, model weights, caches, and large experiment outputs remain local and must not be committed.
-
-## Canonical processed interaction schema
-- `user_id`
-- `asin`
-- `title`
-- `review_text`
-- `rating`
-- `timestamp`
-
-A temporary `source_row_index` is retained only during preprocessing for deterministic equal-timestamp tie-breaking and is not exported as part of the public experiment schema.
-
-## Core recommendation task
-For each user, interactions are chronological. The recommender predicts the next purchased item from a 20-item candidate set containing:
-- 1 ground-truth next item
-- 19 deterministic randomly sampled non-interacted negatives
-
-Initial `min_history = 3`, so the first prediction target is cleaned purchase 4.
-
-Continuous evaluation generates every eligible next-item session for selected users. NDCG is averaged across sessions within each user first, then averaged across users.
-
-## Frozen preprocessing policy v1
-Canonical policy: `docs/PREPROCESSING_POLICY.md`.
-
-Key rules:
-1. Deduplicate metadata by ASIN using one usable non-empty title.
-2. Drop review rows missing any required PURE field; do not synthesize review text from `summary`.
-3. Drop interactions without a usable metadata title.
-4. Collapse repeated `(user,item)` groups that are identical on PURE-relevant fields.
-5. Exclude ambiguous repeated `(user,item)` groups when timestamp, rating, or review text conflicts.
-6. Sort by timestamp with raw source-row order as deterministic tie-breaker.
-7. Do not rerun iterative 5-core filtering after cleaning.
-8. Negative candidates come from canonical items the user never interacts with anywhere in the cleaned full history.
-
-These edge-case cleaning decisions are explicit reproduction choices because the paper does not document them.
-
-## Frozen real-data Phase 1 result
-- metadata rows: 84,819
-- unique metadata ASINs: 71,911
-- duplicate metadata ASIN groups: 12,908
-- metadata empty titles: 11
-- raw review rows: 497,577
-- dropped missing-required rows: 158
-- dropped rows without usable metadata title: 1,262 across 19 ASINs
-- exact duplicate `(user,item)` groups collapsed: 22,782
-- exact duplicate rows removed: 22,799
-- ambiguous `(user,item)` groups excluded: 576
-- ambiguous rows excluded: 1,348
+Frozen real-data result:
+- raw reviews: 497,577
 - final canonical interactions: 472,010
 - final users: 55,209
 - final items: 17,388
 - eligible users with `min_history=3`: 54,451
-- history min/median/mean/max: 1 / 6.0 / 8.549511854951186 / 775
-- deterministic pilot users: 20
+- pilot users: 20
 - frozen continuous recommendation sessions: 94
 - candidate size: 20
 - candidate seed: 42
 - candidate invariants: PASS
 
-Arithmetic audit:
-`497,577 - 158 - 1,262 - 22,799 - 1,348 = 472,010`.
-
-## PURE components to reproduce
-1. Review Extractor
-2. Profile Updater
-3. LLM Recommender
-
-Before full PURE, reproduce the purchased-item baselines in stages:
-- Sequential
-- Recency-focused
-- ICL
+Core task: predict each eligible next purchase from one ground-truth item plus 19 non-interacted negatives. First target is cleaned purchase 4 because `min_history=3`.
 
 ## Phase 2 — Sequential baseline
-Paper-derived behavior:
-- provide only chronological purchased-item interactions and candidate list;
-- rank candidates by likelihood of next purchase;
-- use the frozen continuous sequential sessions;
-- evaluate NDCG@1/@5/@10/@20 with per-user-first aggregation;
-- use structured output for reliable post-processing.
+Paper-derived behavior preserved:
+- model sees only chronological purchased-item interactions and candidate list;
+- reviews, ratings, profiles, and future items are excluded;
+- target is never marked;
+- frozen candidate sets from Phase 1 are reused;
+- evaluate NDCG@1/@5/@10/@20;
+- aggregate sessions within each user first, then average across users.
 
-The paper does not publish the exact Sequential prompt text or exact JSON schema. Our explicit protocol is documented in `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`.
+The paper does not publish the exact Sequential prompt or JSON schema. Our explicit protocol is documented in `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`.
 
-### Phase 2 implementation now present
+### Current implementation
 - `config/phase2.toml`
 - `src/pure_recommender/baselines/sequential.py`
 - `src/pure_recommender/phase2/config.py`
@@ -144,50 +70,52 @@ The paper does not publish the exact Sequential prompt text or exact JSON schema
 - `scripts/run_phase2_sequential.py`
 - `tests/test_sequential_baseline.py`
 
-Key safeguards:
-- reviews and ratings are never included in the Sequential prompt;
-- target item is never marked for the LLM;
-- history is oldest -> newest;
-- candidates use title + ASIN;
-- response must be a complete JSON permutation of candidate ASINs;
-- malformed rankings are not silently repaired;
-- runner supports resume/checkpoint behavior;
-- per-session raw response, rank, NDCG, token usage, and latency are written locally.
-
-### Initial Phase 2 pilot settings
-- sessions: first 3 frozen sessions
-- model: `llama-3.2-3b-instruct-uncensored`
+Initial pilot settings:
+- first 3 frozen sessions
 - temperature: 0.0
 - max output tokens: 512
 - generation seed: 42
 - fail-fast: true
 - resume: true
 
-If the 3-session pilot is clean, set `max_sessions = 0` and run all 94 frozen sessions.
+### First pilot attempt — formatting failure
+Observed on session `A24ZRTTC3SPX8C:4`:
+- history length: 3
+- candidate count: 20
+- parser error: `Ranking length 3 does not match candidate count 20`
+- no NDCG result was accepted for this session
+- failed record was written locally; resume will retry it because only `status="ok"` sessions are skipped
+
+Diagnosis:
+- the original prompt included a pseudo-JSON illustration with an ellipsis, conceptually like `{"ranking":["ASIN_1","ASIN_2",...,"ASIN_N"]}`;
+- that is not valid JSON and can encourage a small local model to imitate a shortened three-entry structure;
+- this is treated as a **prompt-formatting defect in our reproduction**, not a model-performance result.
+
+Fix now pushed:
+- removed placeholder/ellipsis pseudo-JSON from the prompt;
+- prompt now states the exact required ranking length dynamically (`20` for the frozen pilot);
+- explicitly forbids placeholders and ellipses;
+- still requires a complete permutation of candidate ASINs with no silent repair;
+- added regression test guarding against the placeholder pattern;
+- runner now prints a raw model-response preview when parsing fails, while still preserving the full raw response in local results.
 
 ## Current implementation status
 Completed:
-- dataset schema inspection and anomaly analysis
-- preprocessing-policy v1 freeze
-- canonical preprocessing and audit reporting
-- deterministic continuous sessions and candidate sampling
-- NDCG metric and paper-style aggregation
-- Phase 1 synthetic and real-data validation
-- Phase 1 formal freeze
-- local OpenAI-compatible client and proxy-safe localhost transport
-- local model endpoint and inference smoke test
-- Phase 2 Sequential prompt/parser/config/runner implementation
-- Phase 2 protocol documentation
+- Phase 1 data/evaluation pipeline and real-data freeze
+- local OpenAI-compatible inference infrastructure
+- Sequential baseline runner, parser, metrics wiring, resume/checkpointing
+- first real Phase 2 pilot attempt and diagnosis of output-formatting defect
+- corrected exact-count JSON ranking prompt and regression coverage
 
 Pending next:
-1. Pull Phase 2 code
+1. Pull the prompt fix
 2. Run the full unit-test suite
-3. Run the 3-session Sequential real-data pilot
-4. Inspect raw ranking validity, target ranks, latency, and token usage
-5. If pilot passes, run all 94 frozen sessions
-6. Record Sequential NDCG@1/@5/@10/@20 in `EXPERIMENT_LOG.md`
-7. Implement Recency and ICL baselines next
-8. Then begin Review Extractor and PURE modules
+3. Re-run the same 3-session Sequential pilot
+4. Confirm all three outputs contain complete 20-ASIN permutations
+5. Inspect target ranks, latency, usage, and raw responses
+6. If pilot passes, set `max_sessions = 0` and evaluate all 94 frozen sessions
+7. Record Sequential NDCG@1/@5/@10/@20
+8. Implement Recency and ICL baselines, then Review Extractor/PURE modules
 
 ## Working rule
-This file is the authoritative snapshot of current project status. Update it whenever phase, backend, dataset, model, protocol, or next task changes. Important runs are appended to `docs/EXPERIMENT_LOG.md`; methodology decisions belong in dedicated policy/protocol documents.
+This file is the authoritative snapshot of current project status. Important runs and failures belong in the experiment record; methodology decisions belong in dedicated policy/protocol documents. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
