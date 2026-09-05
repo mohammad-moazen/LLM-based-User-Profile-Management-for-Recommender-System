@@ -1,0 +1,15 @@
+# Local LLM connectivity configuration.
+#
+# IMPORTANT: the currently configured model is used only for the smoke test.
+# The PURE paper reproduction baseline must use the exact reference model
+# `Llama-3.2-3B-Instruct` (not an uncensored derivative) before Phase 2 results
+# are treated as paper-aligned experimental results.
+
+[server]
+base_url = "http://127.0.0.1:1234/v1"
+model = "llama-3.2-3b-instruct-uncensored"
+timeout_seconds = 120
+
+[generation]
+temperature = 0.0
+max_tokens = 24
