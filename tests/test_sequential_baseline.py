@@ -56,6 +56,14 @@ class SequentialBaselineTests(unittest.TestCase):
         self.assertNotIn("1.0", prompt)
         self.assertNotIn("5.0", prompt)
 
+    def test_prompt_requires_exact_count_without_pseudo_json_ellipsis(self):
+        messages = build_sequential_messages(self.history, self.candidates, self.titles)
+        prompt = messages[1]["content"]
+        self.assertIn("exactly 3 strings", prompt)
+        self.assertIn("every candidate ASIN exactly once", prompt)
+        self.assertIn("do not use an ellipsis", prompt)
+        self.assertNotIn('"ASIN_1","ASIN_2",...', prompt)
+
     def test_complete_json_ranking_is_accepted(self):
         ranking = parse_complete_ranking(
             '{"ranking":["C2","C1","C3"]}',
