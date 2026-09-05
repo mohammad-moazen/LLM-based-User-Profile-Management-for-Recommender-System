@@ -3,6 +3,11 @@
 This module deliberately uses only the Python standard library. It keeps the
 recommender independent from any specific local runtime while supporting the
 OpenAI-compatible endpoints exposed by LM Studio/Bionic and other servers.
+
+The client intentionally bypasses operating-system and environment HTTP proxy
+settings. This project is designed to talk only to a local inference server,
+and on some Windows configurations ``urllib`` may otherwise route loopback
+requests through a configured proxy, causing misleading HTTP 503 errors.
 """
 
 from __future__ import annotations
@@ -11,7 +16,7 @@ from dataclasses import dataclass
 import json
 from typing import Any, Mapping, Sequence
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,11 +28,22 @@ class LLMResponse:
 
 
 class OpenAICompatibleLLMClient:
-    """Small HTTP client for `/v1/models` and `/v1/chat/completions`."""
+    """Small HTTP client for `/v1/models` and `/v1/chat/completions`.
+
+    The transport is deliberately proxy-free because the intended endpoint is
+    a loopback/local server such as LM Studio, Bionic, vLLM, or llama.cpp.
+    """
 
     def __init__(self, base_url: str, timeout_seconds: float = 120.0) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
+
+        # ``urllib`` normally inherits proxy settings from the environment and
+        # from the host operating system. On some Windows machines, even
+        # 127.0.0.1 requests can be sent through that proxy and return an HTTP
+        # 503 unrelated to the local server. An empty ProxyHandler explicitly
+        # disables proxy use for this local-only client.
+        self._opener = build_opener(ProxyHandler({}))
 
     def _request_json(
         self,
@@ -46,7 +62,7 @@ class OpenAICompatibleLLMClient:
         request = Request(url=url, data=body, headers=headers, method=method)
 
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
+            with self._opener.open(request, timeout=self.timeout_seconds) as response:
                 raw_bytes = response.read()
         except HTTPError as exc:
             error_body = exc.read().decode("utf-8", errors="replace")
