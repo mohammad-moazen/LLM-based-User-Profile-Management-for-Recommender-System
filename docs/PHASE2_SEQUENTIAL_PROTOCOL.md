@@ -1,7 +1,7 @@
 # Phase 2 Sequential Baseline Protocol
 
 ## Status
-Initial protocol for the 20-user / 94-session frozen Video Games pilot.
+Active protocol for the 20-user / 94-session frozen Video Games pilot.
 
 ## Paper-derived setup
 The PURE paper describes the **Sequential** baseline as an LLM recommender that receives only:
@@ -15,19 +15,35 @@ The paper's continuous evaluation provides interaction history through timestep 
 The paper also states that JSON schemas are used to make generative outputs easier to parse reliably.
 
 ## Explicit reproduction choices not specified by the paper
-The paper does not publish the exact Sequential baseline prompt text or its exact JSON schema. Our v1 Phase 2 protocol therefore fixes the following choices explicitly:
+The paper does not publish the exact Sequential baseline prompt text or its exact JSON schema. Our active Phase 2 protocol therefore fixes the following choices explicitly:
 
-1. History is rendered oldest -> newest.
-2. Each purchased item is represented by canonical product title plus ASIN.
-3. Reviews and ratings are excluded from the Sequential prompt.
-4. Candidate items are represented by canonical product title plus ASIN.
-5. The target is never marked, highlighted, or otherwise revealed in the prompt.
-6. The model is instructed to return exactly one valid JSON object with one key named `ranking`.
-7. The `ranking` value must be an array whose length exactly equals the candidate count (20 in the frozen pilot), containing every candidate ASIN exactly once.
-8. The prompt intentionally avoids pseudo-JSON examples with placeholders or ellipses. A first pilot attempt used an illustrative pattern containing `...`; the local 3B model returned only three ranking entries. This was treated as a prompt-formatting defect in our reproduction, not as a recommendation result, and the prompt was corrected to state the exact array length in prose.
-9. Invalid rankings are not silently repaired or padded. The initial pilot remains fail-fast so malformed output can be inspected before a larger run.
-10. Generation settings for the initial pilot are temperature `0.0`, maximum output length `512`, and request seed `42` where supported by the local backend.
-11. The experiment is resumable and writes one result record after each attempted session. Failed records are retried because resume skips only sessions with `status="ok"`.
+1. History is rendered oldest -> newest using canonical product titles only.
+2. Reviews and ratings are excluded from the Sequential prompt.
+3. History ASINs are not shown to the model. They are machine identifiers and add no semantic recommendation information.
+4. Candidate items are rendered as prompt-local numbered choices, `Candidate 1` through `Candidate N`, with canonical product titles only.
+5. Candidate ASINs are not shown to the model. The runner preserves the frozen candidate order and maps ranked candidate numbers back to their ASINs after parsing.
+6. The target is never marked, highlighted, or otherwise revealed in the prompt.
+7. The model is instructed to return exactly one valid JSON object with one key named `ranking`.
+8. The `ranking` value must be a complete permutation of the candidate numbers. For the frozen pilot, it therefore contains each integer from 1 through 20 exactly once.
+9. Digit-only JSON strings such as `"3"` are accepted as a serialization tolerance and normalized to integer 3. This does not infer, repair, add, remove, or reorder candidate choices.
+10. Product names, ASINs, duplicate numbers, omitted numbers, or out-of-range numbers are rejected. Invalid rankings are never silently repaired.
+11. Generation settings for the initial pilot are temperature `0.0`, maximum output length `512`, and request seed `42` where supported by the local backend.
+12. The experiment is resumable and writes one result record after each attempted session. Failed records are retried because resume skips only sessions with `status="ok"`.
+
+## Why the numbered-candidate protocol was adopted
+Two early real-model pilot attempts exposed formatting failure modes in the original ASIN-output protocol:
+
+- **Pilot attempt 1:** the prompt contained illustrative pseudo-JSON with an ellipsis. The local 3B model returned only 3 ranking entries instead of 20. This was treated as a prompt-formatting defect, not a recommendation result.
+- **Pilot attempt 2:** after removing the ellipsis and explicitly requesting 20 ASINs, the model returned 23 ASINs: the 3 purchase-history ASINs followed by the 20 candidate ASINs. The model had copied machine identifiers from both prompt sections despite being told to rank candidates only.
+
+The second failure showed that exposing ASINs in both history and candidate sections created unnecessary output ambiguity for the local model. ASINs carry no useful semantic recommendation content; the product titles do. Therefore, the active protocol separates semantic ranking from machine identifiers:
+
+- history: titles only;
+- candidates: numbered titles only;
+- output: ranked candidate numbers only;
+- evaluation: runner maps those numbers back to the unchanged frozen candidate ASIN list.
+
+This changes only the serialization interface between prompt and parser. It does **not** change the frozen users, chronology, candidate sets, target items, or NDCG computation.
 
 ## Active model decision
 The user has explicitly chosen to continue with the currently available local model:
