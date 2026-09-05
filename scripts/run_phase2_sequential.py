@@ -245,6 +245,11 @@ def main() -> int:
             _append_result(results_path, error_result)
             latest_results[session_id] = error_result
             print(f"    ERROR: {exc}")
+            if raw_content:
+                preview = raw_content if len(raw_content) <= 2000 else raw_content[:2000] + "...<truncated>"
+                print("    RAW MODEL RESPONSE:")
+                for line in preview.splitlines() or [preview]:
+                    print(f"      {line}")
             if config.experiment.fail_fast:
                 raise
 
