@@ -35,6 +35,11 @@ def build_sequential_messages(
     ASINs are included as stable machine-readable identifiers. Product titles
     carry the semantic information available to the LLM. The history order is
     oldest -> newest, matching the continuous sequential setup.
+
+    The output instruction deliberately avoids pseudo-JSON examples containing
+    ellipses such as ``["ASIN_1", ..., "ASIN_N"]``. Small local models can copy
+    those placeholders literally and return only a few entries. Instead, the
+    prompt states the exact required array length and validation rules in prose.
     """
 
     if not history:
@@ -59,15 +64,20 @@ def build_sequential_messages(
             raise ValueError(f"Missing canonical title for candidate ASIN {asin!r}")
         candidate_lines.append(f"{index}. {title} [{asin}]")
 
+    candidate_count = len(candidate_asins)
     user_prompt = (
         "I've purchased the following products in chronological order (oldest to newest):\n"
         + "\n".join(history_lines)
         + "\n\nCandidate products:\n"
         + "\n".join(candidate_lines)
-        + "\n\nRank ALL candidate products from most likely to least likely to be my next purchase. "
-        "Return exactly one valid JSON object and no explanation. Use this schema:\n"
-        '{"ranking":["ASIN_1","ASIN_2",...,"ASIN_N"]}\n'
-        "The ranking array must contain every candidate ASIN exactly once."
+        + "\n\nRank ALL candidate products from most likely to least likely to be my next purchase.\n"
+        "Return exactly one valid JSON object and no explanation or Markdown.\n"
+        "The JSON object must contain exactly one key named `ranking`.\n"
+        f"The `ranking` value must be a JSON array of exactly {candidate_count} strings.\n"
+        "Each string must be one ASIN copied exactly from the Candidate products above.\n"
+        "Include every candidate ASIN exactly once: no omissions, no duplicates, and no extra ASINs.\n"
+        "Do not use placeholders such as ASIN_1 or ASIN_N, and do not use an ellipsis.\n"
+        f"Before answering, verify that the ranking array contains exactly {candidate_count} ASINs."
     )
 
     return [
