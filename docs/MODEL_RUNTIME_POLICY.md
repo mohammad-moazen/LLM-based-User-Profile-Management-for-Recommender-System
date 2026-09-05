@@ -1,7 +1,7 @@
 # Model and Local Runtime Policy
 
 ## Purpose
-This document separates **runtime connectivity validation** from **paper-aligned model evaluation** so that a convenient local model used for a smoke test is never silently treated as the reference model from the PURE paper.
+This document separates **runtime connectivity validation**, **project experiments**, and **paper-aligned model reproduction** so that a convenient local model is never silently treated as the exact reference model from the PURE paper.
 
 ## Local-only inference rule
 All LLM inference for the reproduction is local. No cloud inference API is used.
@@ -17,7 +17,7 @@ The paper-aligned reference model is:
 
 `Llama-3.2-3B-Instruct`
 
-A Phase 2 or later result must not be labeled as the paper-aligned Llama reproduction unless the loaded model is the intended `Llama-3.2-3B-Instruct` checkpoint/variant. Quantization and runtime may differ for local feasibility, but must be recorded explicitly.
+A result must not be labeled as the paper's exact model reproduction unless the loaded model is the intended `Llama-3.2-3B-Instruct` checkpoint/variant. Quantization and runtime may differ for local feasibility, but must be recorded explicitly.
 
 ## Current local endpoint discovery
 The local `/v1/models` endpoint has been confirmed reachable. Among the exposed model identifiers are:
@@ -27,25 +27,38 @@ The local `/v1/models` endpoint has been confirmed reachable. Among the exposed 
 
 The exact full list is runtime-local and may change as models are loaded/unloaded.
 
-## Important distinction: smoke-test model vs experiment model
-The currently exposed `llama-3.2-3b-instruct-uncensored` model is a derivative model and is **not** treated as identical to the paper's `Llama-3.2-3B-Instruct` reference model.
+End-to-end Python -> localhost -> chat completion has also passed. The local HTTP client bypasses environment/system HTTP proxies so localhost requests remain direct.
 
-Policy:
-1. It may be used for an HTTP/inference smoke test to validate Python -> localhost -> model execution.
-2. Smoke-test output is infrastructure validation only and produces no paper-comparison metric.
-3. Before Phase 2 Sequential baseline results are accepted as paper-aligned, load the intended `Llama-3.2-3B-Instruct` model and update the checked-in/local configuration accordingly.
-4. Record model identifier, source/checkpoint description, quantization, context length, GPU offload, generation settings, backend/runtime version, and any relevant performance notes for every meaningful LLM experiment.
+## Active model decision
+The user has explicitly chosen to continue the project with the currently available model:
 
-## Initial local model settings target
-For the reference Llama reproduction, the current local target remains:
+`llama-3.2-3b-instruct-uncensored`
+
+This is a derivative model and is **not** treated as identical to the paper's `Llama-3.2-3B-Instruct` reference model.
+
+Policy from this point forward:
+1. The derivative model may be used for Phase 2 and later project experiments.
+2. Any metric produced with it must be labeled **local derivative-model result**, not exact paper-model reproduction.
+3. The frozen Phase 1 data, chronological sessions, candidate sets, leakage rules, and NDCG aggregation remain unchanged; only the backbone model differs from the paper.
+4. If the exact reference checkpoint is tested later, it will be reported as a separate paper-aligned run rather than silently replacing earlier results.
+5. Record model identifier, source/checkpoint description when known, quantization, context length, GPU offload, generation settings, backend/runtime version, and relevant performance notes for every meaningful LLM experiment.
+
+## Initial local settings target
+For the currently active local experiments:
+- model identifier: `llama-3.2-3b-instruct-uncensored`
+- runtime: local OpenAI-compatible Bionic / LM Studio server
+- endpoint: `http://127.0.0.1:1234/v1`
+- deterministic ranking temperature: `0.0` where supported
+- Phase 2 ranking max output tokens: `512`
+- request seed: `42` where supported
+
+For a future exact-reference run, the prior target remains:
 - model: `Llama-3.2-3B-Instruct`
-- format/runtime: local model compatible with LM Studio/Bionic
 - preferred initial quantization: GGUF `Q8_0`
 - fallback if memory/performance requires: `Q6_K`, `Q5_K_M`, then `Q4_K_M`
 - initial context length target: 8192 tokens
-- temperature for deterministic ranking experiments: 0 where supported
 
-These settings are reproduction/runtime choices and must not be attributed to the paper unless explicitly reported by the paper.
+These runtime choices are reproduction decisions and must not be attributed to the paper unless explicitly reported there.
 
 ## Backend abstraction
 Current code location:
@@ -56,4 +69,9 @@ The client currently supports the OpenAI-compatible endpoints needed for the pro
 - `GET /v1/models`
 - `POST /v1/chat/completions`
 
-Phase 2 and PURE modules should call this abstraction rather than importing an LM Studio-specific SDK directly.
+Phase 2 and PURE modules call this abstraction rather than importing an LM Studio-specific SDK directly.
+
+## Phase 2 protocol
+The current Sequential-baseline protocol and the distinction between paper-derived behavior and our explicit prompt/JSON choices are documented in:
+
+`docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
