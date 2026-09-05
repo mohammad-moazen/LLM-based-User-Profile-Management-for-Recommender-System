@@ -212,3 +212,35 @@ Use this file as a chronological record of meaningful runs and debugging milesto
 - Status: **PHASE 1 FROZEN / PASS**
 - Model/backend: not used in Phase 1
 - Next action: configure and validate the local Bionic / LM Studio OpenAI-compatible endpoint using the local Llama-3.2-3B-Instruct model, then begin Phase 2 Sequential LLM baseline on the frozen Phase 1 sessions.
+
+## 2026-09-05 — Local endpoint discovery and LLM client implementation
+- Phase: infrastructure bridge between Phase 1 and Phase 2
+- Backend/runtime: local OpenAI-compatible Bionic / LM Studio endpoint
+- Endpoint confirmed reachable: `http://127.0.0.1:1234/v1`
+- `/v1/models` discovery: PASS
+- Exposed model identifiers observed include:
+  - `llama-3.2-3b-instruct-uncensored`
+  - `qwen3-1.7b`
+  - at least one embedding model
+- Model-policy interpretation:
+  - `llama-3.2-3b-instruct-uncensored` is a derivative model and is accepted only for connectivity/inference smoke testing
+  - it must not be reported as the paper's exact `Llama-3.2-3B-Instruct` reference model
+  - paper-aligned Phase 2 metrics require the intended reference model to be loaded and its exact quantization/runtime settings documented
+- Code added:
+  - `src/pure_recommender/llm/client.py`: backend-agnostic standard-library OpenAI-compatible HTTP client
+  - `src/pure_recommender/llm/config.py`: typed TOML config loader
+  - `config/local_llm.toml`: localhost/model/generation smoke-test settings
+  - `scripts/smoke_test_local_llm.py`: end-to-end Python -> local server -> model connectivity/inference test
+  - `tests/test_llm_client.py`: local mock-server tests for `/v1/models` and `/v1/chat/completions`
+  - `docs/MODEL_RUNTIME_POLICY.md`: explicit smoke-test vs paper-reference model policy
+- Current configured smoke-test model: `llama-3.2-3b-instruct-uncensored`
+- Smoke-test generation defaults:
+  - temperature: 0.0
+  - max tokens: 24
+  - seed: 42 in the smoke-test request
+- Local execution status: pending user pull/run
+- Next action:
+  1. run the full unit-test suite
+  2. run `python scripts/smoke_test_local_llm.py`
+  3. record response, latency, token usage, and any runtime issue
+  4. load the exact `Llama-3.2-3B-Instruct` reference model before Phase 2 paper-aligned evaluation
