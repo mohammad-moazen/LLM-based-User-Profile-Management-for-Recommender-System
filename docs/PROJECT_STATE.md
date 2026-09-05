@@ -7,7 +7,7 @@ Step-by-step Python reproduction of PURE from the paper **LLM-based User Profile
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS.** The canonical data and evaluation pipeline has completed a successful real-data run on Amazon Video Games 5-core. The local OpenAI-compatible server is now confirmed reachable through `/v1/models`. A backend-agnostic Python LLM client and smoke-test script have been added; the next action is to run that smoke test locally, then load the exact paper-reference model before accepting Phase 2 results as paper-aligned.
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS.** The canonical data/evaluation pipeline is stable, the localhost OpenAI-compatible client passes its full regression suite, and end-to-end local model inference has been validated. The next gate before paper-aligned Phase 2 metrics is loading the intended `Llama-3.2-3B-Instruct` reference model and recording its exact runtime settings.
 
 ## Agreed environment
 - Development: Python + VS Code
@@ -23,7 +23,13 @@ Step-by-step Python reproduction of PURE from the paper **LLM-based User Profile
 - Models and datasets must be stored outside drive C when possible
 
 ## Local model endpoint status
-`GET /v1/models` has been confirmed reachable from PowerShell.
+`GET /v1/models`: PASS.
+
+End-to-end Python chat completion through the local OpenAI-compatible server: PASS.
+
+Full unit-test suite after fixing localhost proxy interception: 12/12 PASS.
+
+The local HTTP client explicitly bypasses environment/system HTTP proxies so requests to localhost remain direct.
 
 Observed exposed model identifiers include:
 - `llama-3.2-3b-instruct-uncensored`
@@ -100,7 +106,7 @@ Important provenance rule: these edge-case cleaning decisions are part of this r
 - `src/pure_recommender/llm/config.py`: typed local-LLM config loader
 - `src/pure_recommender/llm/client.py`: standard-library OpenAI-compatible client for `/v1/models` and `/v1/chat/completions`
 - `scripts/smoke_test_local_llm.py`: end-to-end Python -> localhost -> model inference test
-- `tests/test_llm_client.py`: mock HTTP tests for model listing and chat completion
+- `tests/test_llm_client.py`: mock HTTP tests for model listing, chat completion, and localhost proxy bypass
 - `docs/MODEL_RUNTIME_POLICY.md`: explicit distinction between runtime smoke-test models and the paper-reference model
 
 The LLM code is intentionally independent from LM Studio-specific SDK calls so the backend can later be changed by configuration.
@@ -166,20 +172,22 @@ Completed:
 - Deterministic candidate generation with 1 target + 19 negatives
 - Candidate leakage checks
 - NDCG metric implementation and paper-style aggregation
-- Synthetic unit tests; 9/9 passed
+- Synthetic unit tests; 9/9 passed before LLM integration
 - Real local Phase 1 end-to-end run: PASS
 - Phase 1 formal freeze: PASS
 - Local OpenAI-compatible `/v1/models` endpoint discovery: PASS
-- Backend-agnostic local LLM client and smoke-test implementation: code added, local execution pending
+- Backend-agnostic local LLM client: PASS
+- Full current unit-test suite: 12/12 PASS
+- End-to-end local LLM smoke test: PASS
 
 Pending next:
-1. Pull the new LLM client/smoke-test code
-2. Run the full unit-test suite including `test_llm_client.py`
-3. Run `python scripts/smoke_test_local_llm.py` against the currently exposed local model to verify end-to-end inference
-4. Record latency, usage, and exact runtime/model settings from the smoke test
-5. Load the intended `Llama-3.2-3B-Instruct` reference model before treating Phase 2 metrics as paper-aligned
-6. Record exact quantization, context length, GPU offload, runtime/backend version, and generation settings
-7. Implement Phase 2 Sequential baseline using the frozen 94-session pilot
+1. Load the intended `Llama-3.2-3B-Instruct` reference model locally
+2. Confirm its exact identifier through `/v1/models`
+3. Record exact quantization, context length, GPU offload, runtime/backend version, and generation settings
+4. Re-run the smoke test using that exact reference model
+5. Implement Phase 2 Sequential baseline against the frozen 94-session pilot
+6. Evaluate NDCG@1/@5/@10/@20 using paper-style per-user aggregation
+7. Only then scale beyond the 20-user pilot
 
 ## Working rule
 This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, cleaning policy, or next task changes. Important experiment runs are appended to `EXPERIMENT_LOG.md`; methodology decisions belong in dedicated docs such as `PREPROCESSING_POLICY.md` and `MODEL_RUNTIME_POLICY.md`.
