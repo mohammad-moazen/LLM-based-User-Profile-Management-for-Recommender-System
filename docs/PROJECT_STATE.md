@@ -7,9 +7,9 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential 3-session real-data pilot PASS; full 94-session Sequential run is now enabled.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential full run PASS / FROZEN. Recency-Focused baseline implemented and ready for a 3-session pilot.**
 
-The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics must therefore be labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
+The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics are therefore labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
 ## Environment
 - Development: Python + VS Code
@@ -35,76 +35,98 @@ Frozen real-data result:
 
 The task remains: use chronological history to rank one ground-truth next item among 19 non-interacted negatives. NDCG is averaged within user first, then across users.
 
-## Phase 2 — Sequential baseline
-Paper-derived behavior preserved:
-- model sees chronological purchased-item history and the candidate list only;
-- reviews, ratings, profiles, future interactions, and target markers are excluded;
-- the frozen Phase 1 candidate sets are reused unchanged;
-- NDCG@1/@5/@10/@20 is evaluated with the paper-style user-first aggregation.
+## Local LLM status
+Confirmed:
+- `GET /v1/models`: PASS
+- Python chat completion through localhost: PASS
+- localhost proxy interception bug fixed
+- validated numbered-candidate JSON ranking interface works end-to-end
 
-The paper does not publish the exact Sequential prompt or output schema. Our explicit protocol is documented in `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`.
+Active model:
+- `llama-3.2-3b-instruct-uncensored`
 
-### Output-interface debugging history
-Two early pilot attempts were rejected and are not included in metrics:
+Model policy: `docs/MODEL_RUNTIME_POLICY.md`.
 
-1. A pseudo-JSON prompt containing an ellipsis led the model to output only 3 entries for 20 candidates.
-2. After requesting all 20 ASINs explicitly, the model returned 23 ASINs: the 3 history ASINs plus the 20 candidate ASINs.
+## Phase 2 — purchased-item baselines
+Paper baselines reproduced in order:
+1. Sequential — **PASS / FROZEN**
+2. Recency-Focused — implemented, 3-session pilot pending
+3. ICL — pending
 
-These failures were classified as prompt/output-formatting defects, not recommendation-performance results.
+The paper does not publish every exact prompt/output schema detail, so explicit reproduction choices are documented separately.
 
-### Active numbered-candidate protocol
-The stable interface now uses:
-- purchase history: canonical product titles only;
-- candidates: numbered product titles only (`Candidate 1` ... `Candidate N`);
-- model output: a complete JSON permutation of candidate numbers 1..N;
-- runner mapping: ranked candidate numbers -> unchanged frozen candidate ASIN order;
-- parser rejection for missing, duplicate, out-of-range, product-name, or ASIN outputs.
+## Sequential baseline — frozen result
+Protocol: `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
 
-This changes only serialization. Users, histories, candidate sets, targets, and metrics remain unchanged.
+Result record: `docs/PHASE2_SEQUENTIAL_RESULTS.md`
 
-### Validated real-data pilot
-The first 3 frozen sessions completed successfully under the numbered-candidate protocol:
-- successful sessions: 3
+Final full run:
+- successful sessions: 94
 - failed sessions: 0
-- users represented: 2
-- NDCG@1: 0.000000
-- NDCG@5: 0.000000
-- NDCG@10: 0.000000
-- NDCG@20: 0.245522
-- total reported tokens: 1,898
-- mean latency: 1.406 seconds/session
+- users: 20
+- NDCG@1: 0.061667
+- NDCG@5: 0.182577
+- NDCG@10: 0.227799
+- NDCG@20: 0.366378
+- total tokens: 60,669
+- mean latency: 1.385 seconds/session
 - status: PASS
 
-These NDCG values are retained as a pilot diagnostic only; three sessions are too small to interpret as the Sequential baseline's substantive performance.
+Sequential serialization after real-model debugging:
+- history: canonical titles only;
+- candidates: numbered titles only;
+- model output: complete JSON permutation of candidate numbers 1..20;
+- runner maps numbers back to unchanged frozen ASINs;
+- malformed/incomplete/duplicate rankings are rejected, not repaired.
 
-## Full 94-session run configuration
-Checked-in `config/phase2.toml` now uses:
-- `max_sessions = 0` -> all 94 frozen sessions
-- `resume = true` -> the 3 successful pilot sessions are skipped automatically
-- `fail_fast = false` -> one malformed response does not discard progress on the remaining sessions
+The two early formatting failures are retained as debugging evidence and are not included in the frozen metric.
+
+## Recency-Focused baseline
+Paper-derived distinction: use the Sequential setup but explicitly emphasize the most recently purchased item at time step `t-1`.
+
+Protocol: `docs/PHASE2_RECENCY_PROTOCOL.md`
+
+Implemented files:
+- `config/phase2_recency.toml`
+- `src/pure_recommender/baselines/recency.py`
+- `scripts/run_phase2_recency.py`
+- `tests/test_recency_baseline.py`
+
+The Recency-Focused implementation preserves the exact frozen users, histories, targets, candidate sets, parser, metric, model, and generation settings from Sequential. Its only recommendation-behavior change is explicit recency emphasis in the prompt.
+
+Initial Recency pilot settings:
+- first 3 frozen sessions
 - temperature: 0.0
 - max output tokens: 512
 - generation seed: 42
+- resume: true
+- fail-fast: true
+- output directory: `outputs/phase2_recency/`
 
-Invalid model outputs remain excluded from NDCG. If any occur, the summary is `INCOMPLETE`; rerunning retries failed sessions because resume skips only `status="ok"` records.
+## Current implementation status
+Completed:
+- dataset schema inspection and anomaly analysis
+- preprocessing-policy v1 freeze
+- canonical preprocessing and audit reporting
+- deterministic continuous sessions and candidate sampling
+- NDCG metric and user-first aggregation
+- Phase 1 synthetic and real-data validation
+- local OpenAI-compatible client and proxy-safe transport
+- local inference smoke test
+- robust numbered-candidate output interface
+- Sequential baseline 3-session pilot
+- Sequential full 94-session run
+- Sequential result freeze
+- Recency-Focused prompt, config, runner, tests, and protocol documentation
 
-## Current implementation
-- `config/phase2.toml`
-- `src/pure_recommender/baselines/sequential.py`
-- `src/pure_recommender/phase2/config.py`
-- `src/pure_recommender/phase2/io.py`
-- `scripts/run_phase2_sequential.py`
-- `tests/test_sequential_baseline.py`
-- `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
-
-## Next actions
-1. Pull the full-run configuration.
-2. Keep the local model server active.
-3. Run `python scripts/run_phase2_sequential.py` to process all frozen sessions.
-4. If the run is `INCOMPLETE`, rerun the same command until all failed sessions have valid outputs or investigate persistent failures.
-5. Once all 94 sessions are successful, record final Sequential NDCG@1/@5/@10/@20, token usage, and latency.
-6. Then implement Recency and ICL baselines.
-7. After baselines are stable, begin Review Extractor and full PURE modules.
+Pending next:
+1. Pull current changes.
+2. Run the full unit-test suite.
+3. Run `python scripts/run_phase2_recency.py` for the 3-session pilot.
+4. If 3/3 pass, switch Recency to all 94 sessions and record NDCG@1/@5/@10/@20.
+5. Freeze Recency-Focused.
+6. Implement ICL using the paper's `t-2` history plus demonstrated recent item at `t-1`.
+7. Then begin Review Extractor, Profile Updater, and full PURE.
 
 ## Working rule
-This file is the authoritative current snapshot. Failed formatting runs are retained as debugging evidence but are never mixed into recommendation metrics. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
+This file is the authoritative current snapshot. Important experiment results are preserved in dedicated result/protocol documents. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
