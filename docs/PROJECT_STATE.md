@@ -57,15 +57,43 @@ For each user, interactions are sorted chronologically. The recommender predicts
 2. Profile Updater
 3. LLM Recommender
 
+## Confirmed full-dataset validation results
+- Metadata records: 84,819
+- Unique metadata ASINs: 71,911
+- Duplicate metadata ASIN rows: 12,908
+- Review records: 497,577
+- Unique users: 55,217
+- Unique reviewed items: 17,408
+- Review rows missing required fields: 158
+- Review items missing metadata lookup: 1,262
+- Review-to-metadata coverage: 99.7464%
+- Repeated `(user, item)` rows: 24,149
+- Users with >=3 interactions: 55,211
+- Users with >=4 interactions: 55,210
+- Users with >=5 interactions: 55,200
+- Median history length: 6
+- Mean history length: 9.01
+- Maximum history length: 815
+
+## Data-cleaning decisions not yet frozen
+Before implementing the canonical processed dataset, inspect and document:
+1. Duplicate metadata ASIN records and how titles differ across duplicates
+2. Repeated `(user, item)` review rows and whether they are exact duplicates, repeated purchases, or multiple reviews at different times
+3. The 158 review rows missing required fields
+4. The 1,262 review rows whose ASIN is absent from the metadata lookup
+
+Cleaning rules must be deterministic, documented, and applied before candidate generation or evaluation.
+
 ## Current implementation status
 Completed:
 - Repository initialization and branch setup
 - Dataset schema inspection script
 - `.gitignore` protections for dataset/model artifacts
 - Full-dataset validation script
+- Full Video Games validation run and documentation
 
 Pending next:
-1. Run and inspect full dataset validation report
+1. Inspect dataset anomalies and freeze cleaning rules
 2. Implement processed data pipeline
 3. Build chronological user histories
 4. Build deterministic candidate sampling
@@ -74,4 +102,4 @@ Pending next:
 7. Implement Sequential baseline before PURE modules
 
 ## Working rule
-This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, or next task changes.
+This file is the authoritative snapshot of current project status. Update it whenever the phase, backend, dataset, model, cleaning policy, or next task changes.
