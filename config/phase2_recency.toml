@@ -1,0 +1,25 @@
+# Phase 2 Recency-Focused baseline configuration.
+#
+# This consumes the same frozen Phase 1 sessions and candidate sets as the
+# Sequential baseline. The only recommender-prompt difference is explicit
+# emphasis on the most recently purchased item (time step t-1), matching the
+# Recency-Focused description in the PURE paper.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+# Validate the prompt/output behavior on three real sessions before running all 94.
+max_sessions = 3
+resume = true
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase2_recency"
