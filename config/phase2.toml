@@ -1,0 +1,27 @@
+# Phase 2 Sequential baseline configuration.
+#
+# This phase consumes the frozen Phase 1 artifacts and asks the local LLM to
+# rank each 20-item candidate set using ONLY the chronological purchased-item
+# history. Reviews, ratings, profiles, and the ground-truth marker are never
+# shown to the model.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+# Start with a very small real-data pilot so prompt formatting and ranking
+# parsing can be inspected before spending time on all 94 frozen sessions.
+# Set to 0 later to run every frozen Phase 1 session.
+max_sessions = 3
+resume = true
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase2_sequential"
