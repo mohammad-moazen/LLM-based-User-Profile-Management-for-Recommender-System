@@ -271,3 +271,54 @@ Use this file as a chronological record of meaningful runs and debugging milesto
   2. record exact model identifier, quantization, context length, GPU offload, runtime version, and generation settings
   3. re-run the smoke test using that exact model
   4. begin the Phase 2 Sequential baseline on the frozen 94-session pilot
+
+## 2026-09-05 — Active derivative-model decision and Phase 2 Sequential implementation
+- Phase: 2 / Sequential baseline preparation
+- Dataset/category: Amazon Review Data 2018 / Video Games 5-core
+- Frozen data basis: Phase 1 canonical dataset and 94 deterministic recommendation sessions
+- User decision: continue with the currently available local model rather than blocking on loading a different checkpoint
+- Active model: `llama-3.2-3b-instruct-uncensored`
+- Model alignment label: **local derivative-model result; not exact paper-model reproduction**
+- Paper-derived Sequential behavior preserved:
+  - model sees only chronological purchased-item interactions and candidate list
+  - reviews and ratings are excluded
+  - candidate set remains the frozen 1-ground-truth + 19-non-interacted set from Phase 1
+  - NDCG aggregation remains sessions-within-user first, then users
+  - structured JSON output is used for post-processing
+- Explicit reproduction choices because the paper does not publish exact Sequential prompt/schema:
+  - history represented oldest -> newest as `title [ASIN]`
+  - candidate represented as `title [ASIN]`
+  - target is never marked in the prompt
+  - expected JSON is `{"ranking":[...ASINs...]}`
+  - ranking must be a complete permutation of candidates; malformed outputs are not silently repaired
+- Phase 2 code added:
+  - `config/phase2.toml`
+  - `src/pure_recommender/baselines/sequential.py`
+  - `src/pure_recommender/phase2/config.py`
+  - `src/pure_recommender/phase2/io.py`
+  - `scripts/run_phase2_sequential.py`
+  - `tests/test_sequential_baseline.py`
+  - `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
+- Initial real-data pilot configuration:
+  - max sessions: 3
+  - temperature: 0.0
+  - max output tokens: 512
+  - generation seed: 42
+  - fail-fast: true
+  - resume/checkpoint: true
+- Runner records per session:
+  - model ranking
+  - target rank
+  - NDCG@1/@5/@10/@20
+  - latency
+  - reported token usage when available
+  - raw model response
+- Output directory: `outputs/phase2_sequential/` (Git-ignored)
+- Metrics: pending local execution
+- Interpretation: Phase 2 implementation is ready for a three-session real-data validation before running all 94 frozen sessions.
+- Next action:
+  1. pull the Phase 2 code
+  2. run the full unit-test suite
+  3. run `python scripts/run_phase2_sequential.py`
+  4. inspect the three-session output and parser behavior
+  5. if clean, switch `max_sessions` to 0 and evaluate all 94 frozen sessions
