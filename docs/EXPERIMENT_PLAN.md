@@ -9,17 +9,23 @@ Reproduce PURE incrementally, beginning with a small, fully testable local exper
 - Configure local LLM runtime
 - Test local OpenAI-compatible endpoint
 - Record exact model, quantization, context length, and inference settings
+- Inspect data anomalies and freeze deterministic preprocessing rules before experiment generation
+
+Dataset inspection/validation and anomaly analysis are complete. The frozen canonical cleaning rules are documented in `docs/PREPROCESSING_POLICY.md`. Local LLM endpoint validation remains to be completed in parallel.
 
 ## Phase 1 — Data and evaluation pipeline (no LLM dependency)
 - Stream/load review data
-- Join reviews with metadata by ASIN
+- Apply `docs/PREPROCESSING_POLICY.md` exactly
+- Join reviews with deduplicated metadata by ASIN
 - Normalize to canonical interaction schema
 - Sort each user's history chronologically
 - Enforce configurable `min_history` (initially 3)
 - Generate 20-item candidate sets: 1 target + 19 non-interacted negatives
 - Make negative sampling deterministic with an explicit seed
+- Deterministically shuffle candidate positions to avoid fixed target placement
 - Implement NDCG@1, NDCG@5, NDCG@10, NDCG@20
-- Add tests for chronology, leakage prevention, candidate construction, and metrics
+- Add tests for cleaning, chronology, leakage prevention, candidate construction, and metrics
+- Record all post-cleaning counts before any LLM experiment
 
 ## Phase 2 — LLM Sequential baseline
 Use purchased-item history and the candidate set only. The local LLM ranks candidate items.
@@ -61,6 +67,7 @@ After the Llama reproduction is stable, optionally compare PURE across additiona
 Every experiment must record at least:
 - Git commit SHA
 - dataset/category
+- preprocessing-policy version
 - subset selection rule and seed
 - number of users/interactions/sessions
 - model identifier
@@ -71,6 +78,9 @@ Every experiment must record at least:
 - PURE/baseline configuration
 - NDCG metrics
 - runtime notes and failures
+
+## Provenance requirement
+Whenever our implementation makes a methodological choice not specified by the PURE paper, that choice must be documented explicitly as a reproduction decision rather than attributed to the paper. The current dataset cleaning edge cases are covered by `docs/PREPROCESSING_POLICY.md`.
 
 ## Important paper-alignment note
 The paper's problem formulation and experiment wording differ slightly around the first eligible continuous prediction timestep. Our implementation therefore keeps `min_history` configurable. The initial setting is `min_history = 3`, corresponding to predicting purchase 4 from purchases 1–3, matching the experiment description.
