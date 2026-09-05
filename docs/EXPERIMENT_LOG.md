@@ -244,3 +244,30 @@ Use this file as a chronological record of meaningful runs and debugging milesto
   2. run `python scripts/smoke_test_local_llm.py`
   3. record response, latency, token usage, and any runtime issue
   4. load the exact `Llama-3.2-3B-Instruct` reference model before Phase 2 paper-aligned evaluation
+
+## 2026-09-05 — Local LLM client regression fix and smoke-test PASS
+- Phase: infrastructure bridge between Phase 1 and Phase 2
+- Backend/runtime: local OpenAI-compatible Bionic / LM Studio endpoint
+- Python version observed during test output: 3.12
+- Initial regression symptom:
+  - mock HTTP client tests returned HTTP 503 on a random localhost port
+  - diagnosis: environment/system proxy handling could intercept localhost requests made by `urllib`
+- Fix:
+  - local LLM client now explicitly bypasses environment HTTP/HTTPS proxies for localhost inference
+  - regression coverage added so local requests remain direct even when proxy variables are present
+- Full unit-test suite after the fix: PASS (12 tests)
+- End-to-end smoke test: PASS
+- Smoke-test model: `llama-3.2-3b-instruct-uncensored`
+- Smoke-test purpose: connectivity/inference validation only; no recommendation metric produced
+- Confirmed path: Python -> localhost OpenAI-compatible endpoint -> local model -> valid completion
+- Exact latency/token-usage values: not captured in the conversation record; preserve them from local terminal output if needed later
+- Interpretation:
+  - local inference infrastructure is now validated end-to-end
+  - Phase 1 remains frozen and unaffected by the HTTP regression
+  - the project is technically ready to implement Phase 2 logic, but paper-aligned Phase 2 metrics must wait until the intended `Llama-3.2-3B-Instruct` reference model is loaded and runtime settings are recorded
+- Status: **LOCAL LLM INFRASTRUCTURE PASS**
+- Next action:
+  1. load the intended `Llama-3.2-3B-Instruct` reference model locally
+  2. record exact model identifier, quantization, context length, GPU offload, runtime version, and generation settings
+  3. re-run the smoke test using that exact model
+  4. begin the Phase 2 Sequential baseline on the frozen 94-session pilot
