@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential pilot remains in prompt/output-interface validation.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential 3-session real-data pilot PASS; full 94-session Sequential run is now enabled.**
 
 The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics must therefore be labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
@@ -44,34 +44,49 @@ Paper-derived behavior preserved:
 
 The paper does not publish the exact Sequential prompt or output schema. Our explicit protocol is documented in `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`.
 
-### Pilot attempt 1 — incomplete ranking
-Session `A24ZRTTC3SPX8C:4` returned only 3 entries for 20 candidates. The original prompt contained pseudo-JSON with an ellipsis. This was classified as a prompt-formatting failure, not a recommender metric.
+### Output-interface debugging history
+Two early pilot attempts were rejected and are not included in metrics:
 
-### Pilot attempt 2 — history identifiers leaked into output
-After removing the ellipsis and explicitly requesting all 20 candidate ASINs, the same session returned **23 ASINs**:
-- first 3 entries were the 3 purchase-history ASINs;
-- remaining 20 entries were the candidate ASINs.
+1. A pseudo-JSON prompt containing an ellipsis led the model to output only 3 entries for 20 candidates.
+2. After requesting all 20 ASINs explicitly, the model returned 23 ASINs: the 3 history ASINs plus the 20 candidate ASINs.
 
-Parser correctly rejected the response with:
-`Ranking length 23 does not match candidate count 20`.
+These failures were classified as prompt/output-formatting defects, not recommendation-performance results.
 
-No NDCG result is accepted from either failed attempt.
-
-Diagnosis:
-- showing ASINs in both history and candidate sections created output ambiguity for the small local model;
-- ASINs are machine identifiers and provide no useful semantic recommendation signal;
-- asking the model to reproduce machine identifiers is unnecessary for ranking quality.
-
-### Active output-interface fix
-The Sequential prompt now separates semantics from machine identifiers:
+### Active numbered-candidate protocol
+The stable interface now uses:
 - purchase history: canonical product titles only;
 - candidates: numbered product titles only (`Candidate 1` ... `Candidate N`);
 - model output: a complete JSON permutation of candidate numbers 1..N;
-- parser maps those ranked numbers back to the **unchanged frozen candidate ASIN order**;
-- digit-only JSON strings are tolerated as serialization only;
-- missing, duplicate, out-of-range, product-name, or ASIN outputs are rejected rather than repaired.
+- runner mapping: ranked candidate numbers -> unchanged frozen candidate ASIN order;
+- parser rejection for missing, duplicate, out-of-range, product-name, or ASIN outputs.
 
-This changes only prompt/output serialization. It does **not** change users, histories, candidate sets, targets, or NDCG calculation.
+This changes only serialization. Users, histories, candidate sets, targets, and metrics remain unchanged.
+
+### Validated real-data pilot
+The first 3 frozen sessions completed successfully under the numbered-candidate protocol:
+- successful sessions: 3
+- failed sessions: 0
+- users represented: 2
+- NDCG@1: 0.000000
+- NDCG@5: 0.000000
+- NDCG@10: 0.000000
+- NDCG@20: 0.245522
+- total reported tokens: 1,898
+- mean latency: 1.406 seconds/session
+- status: PASS
+
+These NDCG values are retained as a pilot diagnostic only; three sessions are too small to interpret as the Sequential baseline's substantive performance.
+
+## Full 94-session run configuration
+Checked-in `config/phase2.toml` now uses:
+- `max_sessions = 0` -> all 94 frozen sessions
+- `resume = true` -> the 3 successful pilot sessions are skipped automatically
+- `fail_fast = false` -> one malformed response does not discard progress on the remaining sessions
+- temperature: 0.0
+- max output tokens: 512
+- generation seed: 42
+
+Invalid model outputs remain excluded from NDCG. If any occur, the summary is `INCOMPLETE`; rerunning retries failed sessions because resume skips only `status="ok"` records.
 
 ## Current implementation
 - `config/phase2.toml`
@@ -82,23 +97,14 @@ This changes only prompt/output serialization. It does **not** change users, his
 - `tests/test_sequential_baseline.py`
 - `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
 
-Pilot settings remain:
-- first 3 frozen sessions
-- temperature: 0.0
-- max output tokens: 512
-- generation seed: 42
-- fail-fast: true
-- resume: true
-
 ## Next actions
-1. Pull the numbered-candidate protocol update.
-2. Run the full unit-test suite.
-3. Re-run the same 3-session Sequential pilot.
-4. Confirm all three model outputs are complete permutations of candidate numbers 1..20.
-5. Inspect target ranks, latency, token usage, and raw responses.
-6. If the pilot passes, set `max_sessions = 0` and run all 94 frozen sessions.
-7. Record Sequential NDCG@1/@5/@10/@20.
-8. Then implement Recency, ICL, Review Extractor, and full PURE.
+1. Pull the full-run configuration.
+2. Keep the local model server active.
+3. Run `python scripts/run_phase2_sequential.py` to process all frozen sessions.
+4. If the run is `INCOMPLETE`, rerun the same command until all failed sessions have valid outputs or investigate persistent failures.
+5. Once all 94 sessions are successful, record final Sequential NDCG@1/@5/@10/@20, token usage, and latency.
+6. Then implement Recency and ICL baselines.
+7. After baselines are stable, begin Review Extractor and full PURE modules.
 
 ## Working rule
 This file is the authoritative current snapshot. Failed formatting runs are retained as debugging evidence but are never mixed into recommendation metrics. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
