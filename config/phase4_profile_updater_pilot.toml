@@ -1,9 +1,10 @@
-# PURE Phase 4 Profile Updater pilot v2 configuration.
+# PURE Phase 4 Profile Updater pilot v3 configuration.
 #
-# Pilot v2 keeps the same frozen Review Extractor source and runtime, but uses a
-# retention-biased deletion policy after pilot v1 showed arbitrary removal of a
-# unique non-conflicting entry. Coverage is broadened to two users and four
-# chronological updates per user so removed strings can be audited explicitly.
+# Pilot v3 keeps the same frozen Review Extractor source and runtime. The model
+# now returns stable entry IDs rather than copying long strings, and a
+# deterministic retention guard restores omitted unique evidence unless a
+# retained same-category entry has clear lexical overlap. Coverage remains two
+# users and four chronological updates per user for direct comparison with v2.
 
 [input]
 extractions_path = "outputs/phase3_review_extractor_final_1024/extractions.jsonl"
@@ -19,4 +20,4 @@ max_tokens = 1024
 seed = 42
 
 [output]
-directory = "outputs/phase4_profile_updater_pilot_v2"
+directory = "outputs/phase4_profile_updater_pilot_v3"
