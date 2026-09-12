@@ -90,6 +90,7 @@ def _pilot_rows(tasks, latest_results: dict[str, dict[str, object]]) -> list[dic
                 "status": result.get("status", "missing"),
                 "extraction": result.get("extraction"),
                 "extraction_details": result.get("extraction_details"),
+                "rejected_entries": result.get("rejected_entries", []),
                 "error": result.get("error"),
                 "raw_response": result.get("raw_response"),
             }
@@ -160,7 +161,7 @@ def main() -> int:
     print(f"Max output tokens        : {config.generation.max_tokens}")
     print(f"Generation seed          : {config.generation.seed}")
     print("Structured output        : evidence-backed JSON Schema")
-    print("Grounding validation     : verbatim evidence span")
+    print("Grounding validation     : entry-level verbatim evidence filter")
     print("Automatic handoff        : ON (handoff/latest.json)")
     print(f"Resume                   : {config.experiment.resume}")
     if "uncensored" in llm_config.model.lower():
@@ -199,6 +200,7 @@ def main() -> int:
             extraction = parse_review_extraction(raw_content, source_review=source_review)
             extraction_dict = extraction.to_profile_dict()
             extraction_details = extraction.to_audit_dict()
+            rejected_entries = extraction.rejected_to_dict()
 
             result: dict[str, object] = {
                 "task_id": task.task_id,
@@ -211,9 +213,11 @@ def main() -> int:
                 "status": "ok",
                 "component": "Review Extractor",
                 "model": llm_config.model,
-                "grounding_validation": "verbatim_evidence_span",
+                "grounding_validation": "entry_level_verbatim_evidence_filter",
                 "extraction": extraction_dict,
                 "extraction_details": extraction_details,
+                "rejected_entries": rejected_entries,
+                "rejected_entry_count": len(rejected_entries),
                 "latency_seconds": elapsed,
                 "usage": dict(response.usage) if response.usage else None,
                 "raw_response": raw_content,
@@ -225,6 +229,14 @@ def main() -> int:
             print(f"    likes        : {_format_values(extraction_dict['likes'])}")
             print(f"    dislikes     : {_format_values(extraction_dict['dislikes'])}")
             print(f"    key_features : {_format_values(extraction_dict['key_features'])}")
+            if rejected_entries:
+                print(f"    rejected     : {len(rejected_entries)} unsupported entr{'y' if len(rejected_entries) == 1 else 'ies'}")
+                for rejected in rejected_entries[:3]:
+                    print(
+                        "      - "
+                        f"{rejected['field']}: value={rejected['value']!r}, "
+                        f"evidence={rejected['evidence']!r}"
+                    )
             print(f"    latency      : {elapsed:.2f}s")
         except Exception as exc:
             elapsed = time.perf_counter() - started
@@ -237,7 +249,7 @@ def main() -> int:
                 "status": "error",
                 "component": "Review Extractor",
                 "model": llm_config.model,
-                "grounding_validation": "verbatim_evidence_span",
+                "grounding_validation": "entry_level_verbatim_evidence_filter",
                 "latency_seconds": elapsed,
                 "error": str(exc),
                 "raw_response": raw_content,
@@ -284,6 +296,7 @@ def main() -> int:
     latencies: list[float] = []
     users: set[str] = set()
     extracted_counts = {"likes": 0, "dislikes": 0, "key_features": 0}
+    rejected_entry_count = 0
 
     for row in ok_results:
         users.add(str(row["user_id"]))
@@ -299,6 +312,7 @@ def main() -> int:
                 value = extraction.get(key)
                 if isinstance(value, list):
                     extracted_counts[key] += len(value)
+        rejected_entry_count += int(row.get("rejected_entry_count", 0) or 0)
 
     status = "PASS" if len(ok_results) == len(tasks) and not error_results else "INCOMPLETE"
     summary: dict[str, object] = {
@@ -320,9 +334,10 @@ def main() -> int:
             "max_tokens": config.generation.max_tokens,
             "seed": config.generation.seed,
             "structured_output": "evidence_backed_json_schema",
-            "grounding_validation": "verbatim_evidence_span",
+            "grounding_validation": "entry_level_verbatim_evidence_filter",
         },
         "extracted_entry_counts": extracted_counts,
+        "rejected_unsupported_entries": rejected_entry_count,
         "usage_totals": {
             "prompt_tokens": total_prompt_tokens,
             "completion_tokens": total_completion_tokens,
@@ -348,6 +363,7 @@ def main() -> int:
     print(f"likes_entries               : {extracted_counts['likes']}")
     print(f"dislikes_entries            : {extracted_counts['dislikes']}")
     print(f"key_feature_entries         : {extracted_counts['key_features']}")
+    print(f"rejected_entries            : {rejected_entry_count}")
     print(f"total_tokens                : {total_tokens}")
     print(f"mean_latency_sec            : {summary['latency']['mean_seconds']:.3f}")
     print(f"status                      : {status}")
