@@ -1,0 +1,4 @@
+{
+  "state": "READY",
+  "message": "Waiting for the next local experiment run. Local runners overwrite this file and publish only compact experiment handoff data."
+}
