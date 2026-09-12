@@ -1,0 +1,25 @@
+# Phase 2 In-Context Learning (ICL) baseline configuration.
+#
+# For prediction at time step t, the ICL prompt uses purchase interactions only
+# through t-2 as the earlier history and presents the purchase at t-1 as an
+# in-context demonstrated recommendation outcome. The current target/candidates
+# remain the same frozen Phase 1 session used by Sequential and Recency-Focused.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+# Validate ICL prompt/output behavior on three real sessions before all 94.
+max_sessions = 3
+resume = true
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase2_icl"
