@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilots v1-v4 have isolated successive grounding failure modes. Pilot v5 is now ready with evidence-backed structured output plus entry-level conservative grounding filtering. Automatic Git handoff is active.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilot v5 is PASS / ACCEPTED; the configuration is now enabled for the full 134-review extraction with resume. Automatic Git handoff is active.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -119,40 +119,52 @@ Active reproduction choices:
 - the 94 frozen sessions require 134 unique historical review extractions;
 - exact machine-readable schema and evidence validation are project-defined because the paper does not publish them.
 
-### Pilot v1
-3/3 technical PASS, but title-only attributes leaked into `key_features`. Not accepted.
+### Pilot history
+- v1: 3/3 technical PASS, but title-only attributes leaked into `key_features`; not accepted.
+- v2: 3/3 technical PASS, but stronger prompt-only grounding still allowed title-derived attributes; not accepted.
+- v3: mechanical verbatim grounding blocked title leakage but rejected a legitimate grounded paraphrase; representation rule too strict.
+- v4: evidence-backed schema separated concise `value` from exact `evidence`; one title-derived unsupported evidence claim was caught and fail-fast stopped the pilot.
 
-### Pilot v2
-3/3 technical PASS, but stronger prompt-only grounding still allowed title-derived attributes. Not accepted.
+### Pilot v5 — PASS / ACCEPTED
+Pilot v5 keeps the evidence-backed schema and validates every evidence entry independently. Unsupported entries are rejected/logged while other grounded entries from the same structurally valid response are preserved.
 
-### Pilot v3
-Mechanical verbatim grounding blocked title leakage but rejected a legitimate grounded paraphrase (`breathing LEDs` vs. review text `LEDs either breathe`). Grounding protection worked; representation rule was too strict.
+Pilot v5 result:
+- successful extractions: 3/3
+- failed extractions: 0
+- accepted likes entries: 6
+- accepted dislikes entries: 2
+- accepted key-feature entries: 3
+- rejected unsupported entries: 1
+- accepted entries: 11
+- total generated entries before grounding filter: 12
+- pilot rejection rate: 8.33%
+- total reported tokens: 1,898
+- mean latency: 3.999 seconds/extraction
+- status: PASS
 
-### Pilot v4
-Evidence-backed schema separated concise `value` from exact `evidence`. Review 1 passed. Review 2 contained three useful grounded entries plus one unsupported title-derived key feature:
+The rejected entry was the Review-2 title-derived `backlit` evidence. It did not enter the profile-safe extraction. All stored profile-safe entries are review-grounded.
 
-```json
-{"value": "backlit", "evidence": "rainbow backlit wired gaming keyboard mouse combo"}
-```
+Known conservative limitation: audit-only `value` may occasionally be broader or less precisely aligned with the selected evidence span. The downstream profile does not use `value`; it uses only mechanically validated review evidence. Longer/overlapping evidence spans are allowed at this stage and will be consolidated by Profile Updater.
 
-That evidence is absent from the review and came from product metadata. The deterministic validator correctly rejected the response; `fail_fast = true` then stopped before Review 3. Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`.
+Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`.
 
-### Pilot v5 — ready
-Pilot v5 keeps the evidence-backed schema but validates entries independently. Structurally valid grounded entries are retained; unsupported evidence entries are rejected and explicitly logged rather than causing all valid entries from that response to be discarded.
+### Full Review Extractor run — READY
+The accepted v5 configuration is now enabled for all 134 required historical reviews:
+- `max_extractions = 0`
+- `resume = true`
+- `fail_fast = false`
+- output directory: `outputs/phase3_review_extractor_v5/`
 
-Important invariants:
-- rejected entries are never rewritten or replaced;
-- only validated review evidence can enter the downstream profile-safe extraction;
-- rejected field/value/evidence/reason are retained for audit;
-- schema violations still fail the response;
-- Profile Updater remains responsible for redundancy/conflict consolidation.
+The three accepted pilot tasks already exist in that directory, so resume should skip them and process the remaining 131. Task-level failures remain retryable on a later resume run.
 
-Pilot v5 output is isolated at `outputs/phase3_review_extractor_v5/` and remains limited to the same first 3 reviews with `max_extractions = 3`, `resume = true`, `fail_fast = true`.
+Review Extractor will be frozen only after the full run reaches 134 successful / 0 failed and rejection statistics are reviewed.
 
 ## Automatic experiment handoff
 A reusable publisher writes compact local-run results to `handoff/latest.json`, commits only that path, and pushes the current branch. It never stages README or unrelated working-tree files and never auto-pulls/rebases/merges.
 
 After ChatGPT reads a handoff, durable findings are moved into the appropriate docs and the mailbox is reset to `READY`. Git history is persistent, so secrets/private credentials must never be placed in the handoff. See `docs/EXPERIMENT_HANDOFF.md`.
+
+Fatal wrapper-level exceptions can be run through `scripts/run_phase3_review_extractor_safe.py`, which publishes the full Python traceback into the handoff.
 
 ## Reproducibility note for final comparisons
 The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile was finalized. Keep them as historical/frozen results. Before the final thesis comparison table, rerun compared methods under the same finalized runtime profile.
@@ -164,20 +176,19 @@ Completed:
 - Sequential, Recency-Focused, and ICL full baseline freezes
 - JSON-Schema request support
 - Review Extractor leakage-safe task builder, runner, parser, tests, and protocol docs
-- pilots v1-v4 with documented failure modes
-- evidence-backed schema
-- entry-level conservative evidence filter for pilot v5
-- automatic Git experiment-handoff channel
+- pilots v1-v5 with documented failure modes and accepted grounding policy
+- evidence-backed schema with entry-level conservative evidence filtering
+- automatic Git experiment-handoff channel and safe traceback wrapper
 
 ## Next actions
 1. Pull the current branch.
-2. Run the full unit-test suite.
-3. Keep LM Studio on the finalized stable runtime profile.
-4. Run `python scripts/run_phase3_review_extractor.py` for pilot v5.
-5. The runner automatically pushes `handoff/latest.json`; no terminal-output paste is needed.
-6. ChatGPT reads the handoff, records the durable result, and resets the mailbox.
-7. If v5 is clean, enable all 134 unique review extractions with resume and `fail_fast = false`.
-8. Freeze Review Extractor outputs, then implement Profile Updater and PURE recommender.
+2. Keep LM Studio on the finalized stable runtime profile.
+3. Run `python scripts/run_phase3_review_extractor_safe.py` with the full-run configuration.
+4. The runner resumes from the 3 accepted pilot tasks and attempts the remaining 131 required extractions.
+5. The runner automatically publishes the compact full-run summary/error handoff; no terminal-output paste is needed.
+6. ChatGPT reads the handoff, records/fixes any failures, and reruns only failed tasks if necessary.
+7. When 134/134 are successful, freeze Review Extractor outputs and implement Profile Updater.
+8. Then implement the PURE recommender and evaluate it on the frozen 94 sessions.
 9. Rerun compared baselines under the finalized runtime profile before the final thesis comparison table.
 
 ## Working rule
