@@ -32,11 +32,17 @@ class ReviewExtractorTests(unittest.TestCase):
     def test_prompt_contains_paper_relevant_review_context(self):
         messages = build_review_extractor_messages(self.interaction)
         prompt = messages[1]["content"]
+        system_prompt = messages[0]["content"]
         self.assertIn("B000TEST01", prompt)
         self.assertIn("Example Gaming Mouse", prompt)
         self.assertIn("Rating: 4", prompt)
         self.assertIn("light weight and precise sensor", prompt)
         self.assertIn("likes/dislikes/key features", prompt)
+        self.assertIn("Ground every extracted entry in the REVIEW text itself", prompt)
+        self.assertIn("Do not extract a feature merely because it appears in the product name", prompt)
+        self.assertIn("Do not create a specific preference or feature from the rating alone", prompt)
+        self.assertIn("product name", system_prompt)
+        self.assertIn("not independent evidence", system_prompt)
         self.assertNotIn("123456789", prompt)
         self.assertNotIn("u1", prompt)
 
