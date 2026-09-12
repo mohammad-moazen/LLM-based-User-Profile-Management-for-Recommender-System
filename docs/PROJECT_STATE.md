@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential PASS / FROZEN. Recency-Focused PASS / FROZEN. ICL baseline implemented and ready for a 3-session pilot.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential PASS / FROZEN. Recency-Focused PASS / FROZEN. ICL 3-session pilot PASS; full 94-session ICL run is now enabled.**
 
 The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics are therefore labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
@@ -54,7 +54,7 @@ Model policy: `docs/MODEL_RUNTIME_POLICY.md`.
 ## Phase 2 purchased-item baselines
 1. Sequential — **PASS / FROZEN**
 2. Recency-Focused — **PASS / FROZEN**
-3. In-Context Learning (ICL) — **implemented; 3-session pilot pending**
+3. In-Context Learning (ICL) — **3-session pilot PASS; full run enabled**
 
 All three baselines reuse the same frozen users, sessions, candidate sets, targets, NDCG implementation, model, temperature, and generation seed. The baseline-specific difference is prompt framing.
 
@@ -115,7 +115,7 @@ Recency-Focused minus Sequential:
 
 This is a descriptive comparison for the current frozen local derivative-model pilot only.
 
-## ICL baseline — implementation ready
+## ICL baseline
 Paper-derived framing for target timestep `t`:
 - interactions through `t-2` are ordinary earlier history;
 - the purchase at `t-1` is presented as an in-context demonstrated recommendation outcome;
@@ -129,14 +129,31 @@ Implemented files:
 - `scripts/run_phase2_icl.py`
 - `tests/test_icl_baseline.py`
 
-Initial ICL pilot settings:
-- first 3 frozen sessions
+### Validated ICL pilot
+The first 3 frozen sessions completed successfully:
+- successful sessions: 3
+- failed sessions: 0
+- users represented: 2
+- NDCG@1: 0.000000
+- NDCG@5: 0.000000
+- NDCG@10: 0.000000
+- NDCG@20: 0.243320
+- total reported tokens: 2,159
+- mean latency: 1.439 seconds/session
+- status: PASS
+
+These three-session metrics are diagnostic only and are not used as the final ICL performance estimate.
+
+### Full ICL run configuration
+Checked-in `config/phase2_icl.toml` now uses:
+- `max_sessions = 0` -> all 94 frozen sessions
+- `resume = true` -> the 3 successful pilot sessions are skipped automatically
+- `fail_fast = false` -> one malformed response does not discard progress
 - temperature: 0.0
 - max output tokens: 512
 - generation seed: 42
-- resume: true
-- fail-fast: true
-- output directory: `outputs/phase2_icl/`
+
+Invalid outputs remain excluded from NDCG. ICL is frozen only after all 94 sessions are successful and the summary reports `PASS`.
 
 ## Current implementation status
 Completed:
@@ -148,14 +165,15 @@ Completed:
 - robust numbered-candidate output serialization
 - Sequential 94-session full run and result freeze
 - Recency-Focused 94-session full run and result freeze
-- ICL prompt builder, config, runner, tests, and protocol documentation
+- ICL prompt builder, config, runner, tests, protocol documentation
+- ICL 3-session real-data pilot: PASS
 
 Pending next:
-1. Pull current ICL implementation.
-2. Run the full unit-test suite.
-3. Run `python scripts/run_phase2_icl.py` for the first 3 frozen sessions.
-4. If 3/3 pass, switch ICL to all 94 sessions with resume and `fail_fast = false`.
-5. Freeze final ICL NDCG@1/@5/@10/@20, token usage, and latency.
+1. Pull the full-run ICL configuration.
+2. Keep the local model server active.
+3. Run `python scripts/run_phase2_icl.py` across all 94 frozen sessions.
+4. If the summary is `INCOMPLETE`, rerun to retry only failed sessions and investigate persistent failures.
+5. When 94/94 pass, freeze final ICL NDCG@1/@5/@10/@20, token usage, and latency.
 6. Compare Sequential, Recency-Focused, and ICL on the same frozen pilot.
 7. Then implement review-aware baselines and PURE components: Review Extractor, Profile Updater, and full recommender.
 
