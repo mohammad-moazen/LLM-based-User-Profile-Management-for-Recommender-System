@@ -6,27 +6,33 @@ likes, dislikes, and key features. The paper also states that structured JSON
 schemas are used for reliable automatic post-processing, but it does not publish
 the exact schema. This module therefore makes the project's schema choice
 explicit while preserving the paper's three-part representation.
+
+Pilot validation showed that a small local model can copy attributes from the
+visible product title even when the review itself never mentions them. To keep
+the evolving user profile review-grounded while still retaining the paper's
+product metadata as context, the accepted extractor protocol requires every
+returned string to be a short verbatim span from the review text. The parser
+then verifies this property mechanically instead of relying on prompt wording
+alone.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import re
 from typing import Mapping
 
 
 SYSTEM_PROMPT = (
     "You are the Review Extractor component of a recommender system. "
     "Analyze the supplied purchased product and review as data. Extract only "
-    "preferences and product features that are explicitly supported by the review text. "
-    "The ASIN and product name identify the purchased product, and the rating provides "
-    "overall context; they are not independent evidence for specific likes, dislikes, "
-    "or product-feature preferences. Do not copy an attribute solely because it appears "
-    "in the product name, and do not infer an attribute solely from the rating. "
-    "Do not invent facts. Separate the result into likes, dislikes, and key product "
-    "features that the review itself discusses as important to the user's preference "
-    "or purchase decision. If a category has no review-grounded evidence, return an "
-    "empty array for that category."
+    "preferences explicitly supported by the REVIEW TEXT. Product metadata "
+    "such as ASIN, product name, and rating may provide identity/sentiment "
+    "context, but they are NEVER evidence for an extracted entry. Every string "
+    "you return must be a short contiguous verbatim quote copied from the "
+    "review text itself; do not paraphrase, infer, or copy title-only attributes. "
+    "Separate the result into likes, dislikes, and key product features."
 )
 
 
@@ -46,20 +52,27 @@ class ReviewExtraction:
         }
 
 
+def _string_array(description: str) -> dict[str, object]:
+    return {
+        "type": "array",
+        "description": description,
+        "items": {
+            "type": "string",
+            "description": "A short contiguous verbatim quote copied from the review text.",
+        },
+    }
+
+
 def review_extractor_response_format() -> dict[str, object]:
     """Return the JSON-Schema response format used by the local runtime.
 
     The exact schema is a reproduction choice because the paper reports using
     JSON schemas but does not publish the machine-readable schema itself.
     Arrays may be empty when the review contains no supported evidence for a
-    category. Entries must be non-empty strings and are not deduplicated here;
-    redundancy resolution belongs to the later Profile Updater stage.
+    category. Entries are later checked against the source review by the local
+    parser; title-only or paraphrased strings are rejected rather than repaired.
     """
 
-    string_array = {
-        "type": "array",
-        "items": {"type": "string"},
-    }
     return {
         "type": "json_schema",
         "json_schema": {
@@ -68,9 +81,15 @@ def review_extractor_response_format() -> dict[str, object]:
             "schema": {
                 "type": "object",
                 "properties": {
-                    "likes": string_array,
-                    "dislikes": string_array,
-                    "key_features": string_array,
+                    "likes": _string_array(
+                        "Positive preferences or praised aspects explicitly stated in the review."
+                    ),
+                    "dislikes": _string_array(
+                        "Negative preferences, complaints, or disliked aspects explicitly stated in the review."
+                    ),
+                    "key_features": _string_array(
+                        "Concrete product attributes or capabilities explicitly discussed in the review and relevant to preference."
+                    ),
                 },
                 "required": ["likes", "dislikes", "key_features"],
                 "additionalProperties": False,
@@ -94,11 +113,8 @@ def build_review_extractor_messages(
     the rating is embedded inside the ``input reviews`` placeholder, so this is
     recorded as an explicit reproduction interpretation.
 
-    Product identity/title and rating are deliberately prevented from becoming
-    stand-alone evidence for extracted attributes. This refinement was added
-    after the first real-data pilot showed that the local derivative model could
-    copy title-only attributes into ``key_features`` even when the review never
-    discussed them.
+    Product metadata remains visible for paper alignment, but only verbatim
+    review-text spans are accepted as extracted profile evidence.
     """
 
     asin = str(interaction.get("asin", "")).strip()
@@ -130,16 +146,17 @@ def build_review_extractor_messages(
         "<<<REVIEW>>>\n"
         f"{review_text}\n"
         "<<<END REVIEW>>>\n\n"
-        "Analyze the user's likes/dislikes/key features by referring to their review.\n"
-        "Ground every extracted entry in the REVIEW text itself.\n"
-        "Use the ASIN and product name only to identify the product. Do not extract a "
-        "feature merely because it appears in the product name.\n"
-        "Use the rating only as overall sentiment context. Do not create a specific "
-        "preference or feature from the rating alone.\n"
-        "For key_features, include only product attributes explicitly mentioned or "
-        "clearly described in the review and relevant to the user's preference.\n"
-        "If the review does not support an entry, omit it; empty arrays are valid.\n"
-        "Keep each extracted entry concise and self-contained.\n"
+        "Analyze the user's likes/dislikes/key features by referring to the review.\n\n"
+        "GROUNDING RULES — FOLLOW STRICTLY:\n"
+        "1. The REVIEW TEXT between the markers is the only evidence source.\n"
+        "2. ASIN and Product name identify the product only. Never copy a feature merely because it appears in the product name.\n"
+        "3. Rating is sentiment context only. Never invent a preference from the numeric rating.\n"
+        "4. EVERY returned string must be a short contiguous VERBATIM QUOTE from the review text. Do not paraphrase.\n"
+        "5. likes = explicitly positive or praised review spans.\n"
+        "6. dislikes = explicitly negative or complaint review spans.\n"
+        "7. key_features = concrete product attributes or capabilities explicitly discussed in the review as relevant to preference.\n"
+        "8. If a category has no supported review span, return an empty array. Empty is better than unsupported.\n"
+        "9. Do not use outside knowledge or infer unstated attributes.\n"
         "Return only the structured response required by the JSON schema."
     )
 
@@ -195,12 +212,49 @@ def _parse_string_list(payload: object, field_name: str) -> tuple[str, ...]:
     return tuple(values)
 
 
-def parse_review_extraction(text: str) -> ReviewExtraction:
+def _normalize_grounding_text(value: str) -> str:
+    """Normalize only whitespace/case for deterministic verbatim-span checks."""
+
+    return re.sub(r"\s+", " ", value).strip().casefold()
+
+
+def _validate_review_grounding(
+    extraction: ReviewExtraction,
+    source_review: str,
+) -> None:
+    normalized_review = _normalize_grounding_text(source_review)
+    if not normalized_review:
+        raise ValueError("Cannot validate Review Extractor grounding against an empty review")
+
+    for field_name, values in (
+        ("likes", extraction.likes),
+        ("dislikes", extraction.dislikes),
+        ("key_features", extraction.key_features),
+    ):
+        for value in values:
+            normalized_value = _normalize_grounding_text(value)
+            if normalized_value not in normalized_review:
+                raise ValueError(
+                    "Review Extractor produced a non-verbatim or non-review-grounded entry; "
+                    f"field={field_name!r}, value={value!r}"
+                )
+
+
+def parse_review_extraction(
+    text: str,
+    *,
+    source_review: str | None = None,
+) -> ReviewExtraction:
     """Strictly validate and return one three-part extraction.
 
     No semantic repair, deduplication, inferred entries, or category migration is
-    performed. The later Profile Updater is responsible for redundancy/conflict
-    handling, matching the component separation described in PURE.
+    performed. When ``source_review`` is provided (required by the production
+    runner), each returned string must be a contiguous review-text span after
+    case/whitespace normalization. Unsupported title-derived or paraphrased
+    entries are rejected rather than silently filtered.
+
+    Redundancy/conflict handling remains the responsibility of Profile Updater,
+    matching the component separation described in PURE.
     """
 
     payload = _extract_json_object(text)
@@ -214,8 +268,13 @@ def parse_review_extraction(text: str) -> ReviewExtraction:
             f"missing={missing}, unexpected={unexpected}"
         )
 
-    return ReviewExtraction(
+    extraction = ReviewExtraction(
         likes=_parse_string_list(payload["likes"], "likes"),
         dislikes=_parse_string_list(payload["dislikes"], "dislikes"),
         key_features=_parse_string_list(payload["key_features"], "key_features"),
     )
+
+    if source_review is not None:
+        _validate_review_grounding(extraction, source_review)
+
+    return extraction
