@@ -49,7 +49,7 @@ The accepted v5 policy validates each generated entry independently:
 6. rejected entries are never rewritten, inferred, replaced, or silently moved to another category;
 7. only accepted evidence can enter the downstream-safe profile representation.
 
-The JSON schema now asks for non-empty `value` and `evidence` strings (`minLength = 1`), and the prompt explicitly instructs the model to omit unsupported entries instead of returning blank evidence. The local validator still treats any blank evidence that slips through as rejected profile data rather than a response-level failure.
+The JSON schema asks for non-empty `value` and `evidence` strings (`minLength = 1`), and the prompt explicitly instructs the model to omit unsupported entries instead of returning blank evidence. The local validator still treats any blank evidence that slips through as rejected profile data rather than a response-level failure.
 
 This is conservative filtering rather than semantic repair. It is an explicit reproduction engineering choice for the active local derivative model because the paper does not publish an exact grounding validator.
 
@@ -92,7 +92,7 @@ The same three reviews were processed successfully with the entry-level conserva
 - 1,898 total reported tokens;
 - 3.999 seconds mean latency.
 
-The rejected entry was the title-derived `backlit` claim from Review 2. It was logged and excluded while the grounded entries from the same response were preserved. No unsupported evidence entered the downstream-safe extraction.
+The rejected entry was the title-derived `backlit` claim from Review 2. It was logged and excluded while grounded entries from the same response were preserved. No unsupported evidence entered the downstream-safe extraction.
 
 Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`.
 
@@ -111,13 +111,36 @@ Result:
 - total successful-request latency: 504.068 seconds (~8.40 minutes)
 - status: INCOMPLETE
 
-All three failures had the same cause: a generated `key_features` entry had `evidence: ""`. The parser previously treated blank evidence as a response-level validation error before entry-level filtering could run. The retry patch now rejects a blank-evidence entry individually with reason `empty_evidence`, preserving other grounded entries in that response.
+All three failures had the same cause: a generated `key_features` entry had `evidence: ""`. The parser previously treated blank evidence as a response-level validation error before entry-level filtering could run. The retry patch rejects a blank-evidence entry individually with reason `empty_evidence`, preserving other grounded entries in that response.
 
 Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_FULL_RUN_ATTEMPT1.md`.
 
-The accepted v5 directory remains unchanged and `resume = true` remains enabled. Therefore the next run should skip the 131 successful tasks and retry only the 3 failed tasks.
+## Final full extraction state — PASS / FROZEN
+The resume-only retry skipped the 131 already successful tasks and retried the three blank-evidence failures. The combined latest-task state is now complete:
 
-The Review Extractor is not frozen until the complete state reaches 134 successful / 0 failed and final rejection statistics are recorded.
+- required extractions: 134
+- successful extractions: 134
+- failed extractions: 0
+- users represented: 20
+- accepted likes entries: 236
+- accepted dislikes entries: 97
+- accepted key-feature entries: 163
+- total accepted entries: 496
+- rejected unsupported/blank-evidence entries: 36
+- total generated entries before grounding filter: 532
+- final entry rejection rate: 6.77%
+- prompt tokens: 70,502
+- completion tokens: 22,327
+- total reported tokens: 92,829
+- total successful-request latency: 525.338 seconds (~8.76 minutes)
+- mean latency: 3.920 seconds/extraction
+- status: PASS
+
+The 36 rejected entries are expected conservative-filter events, not failed extraction tasks. None enter the downstream profile-safe representation.
+
+The Review Extractor is therefore **FROZEN** for this branch. Profile Updater must consume only the accepted `extraction` data from `outputs/phase3_review_extractor_v5/` and must not consume rejected entries or audit-only `value` fields.
+
+Final result record: `docs/PHASE3_REVIEW_EXTRACTOR_FINAL_RESULTS.md`.
 
 ## Automatic experiment handoff
 The runner publishes a compact result/error payload to `handoff/latest.json` and automatically commits/pushes only that path. This removes the need to paste long terminal outputs into chat. Full experiment artifacts remain local under ignored `outputs/` directories.
@@ -141,7 +164,8 @@ For fatal wrapper-level exceptions, `scripts/run_phase3_review_extractor_safe.py
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_FULL_RUN_ATTEMPT1.md`
+- `docs/PHASE3_REVIEW_EXTRACTOR_FINAL_RESULTS.md`
 - `docs/EXPERIMENT_HANDOFF.md`
 
 ## Local outputs
-Historical pilot outputs remain untracked under v1-v5 output directories. The accepted-v5 directory is reused with `resume = true` so successful tasks are not recomputed during retry.
+Historical pilot outputs remain untracked under v1-v5 output directories. The accepted-v5 directory is the frozen local source for downstream profile construction.
