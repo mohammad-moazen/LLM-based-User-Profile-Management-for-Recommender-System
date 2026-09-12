@@ -1,5 +1,76 @@
 {
-  "state": "READY",
+  "state": "RESULT",
   "experiment": "phase5_pure_recommender_full",
-  "note": "Phase 5 pilot v1 passed 6/6. Run scripts/run_phase5_pure_recommender_full_safe.py for all 94 frozen sessions."
+  "summary": {
+    "component": "PURE Recommender",
+    "run_version": "full_v1",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "requested_sessions": 94,
+    "successful_sessions": 92,
+    "failed_sessions": 2,
+    "users_in_successful_sessions": 20,
+    "profile_state_alignment": "target_position_minus_one",
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "complete_numbered_candidate_ranking_json_schema"
+    },
+    "ndcg": {
+      "1": 0.10443452380952381,
+      "5": 0.24724831970595418,
+      "10": 0.31828698083842766,
+      "20": 0.41685075423761997
+    },
+    "prompt_tokens": {
+      "total": 98825,
+      "mean": 1074.1847826086957,
+      "max": 2801
+    },
+    "completion_tokens": {
+      "total": 6639,
+      "mean": 72.16304347826087
+    },
+    "latency": {
+      "total_seconds": 196.67185569997673,
+      "mean_seconds": 2.1377375619562686
+    },
+    "status": "INCOMPLETE"
+  },
+  "rows": [
+    {
+      "status": "error",
+      "session_id": "A3RQZ1J5F5G104:10",
+      "user_id": "A3RQZ1J5F5G104",
+      "target_position": null,
+      "profile_state_task_id": null,
+      "history_length": null,
+      "profile_counts": null,
+      "target_rank": null,
+      "ndcg": null,
+      "finish_reason": null,
+      "latency_seconds": 2.389353200000187,
+      "usage": null,
+      "error": "Ranking contains duplicate candidate numbers",
+      "raw_response": "{\n    \"ranking\": [18, 19, 17, 15, 12, 20, 16, 14, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 20]\n}"
+    },
+    {
+      "status": "error",
+      "session_id": "A26C4UAI3IXYF:6",
+      "user_id": "A26C4UAI3IXYF",
+      "target_position": null,
+      "profile_state_task_id": null,
+      "history_length": null,
+      "profile_counts": null,
+      "target_rank": null,
+      "ndcg": null,
+      "finish_reason": null,
+      "latency_seconds": 2.099988800000574,
+      "usage": null,
+      "error": "Ranking contains duplicate candidate numbers",
+      "raw_response": "{\n    \"ranking\": [5, 16, 17, 4, 2, 12, 13, 20, 10, 15, 1, 9, 18, 8, 6, 3, 7, 11, 14, 20]\n}"
+    }
+  ]
 }
