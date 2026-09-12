@@ -1,12 +1,8 @@
 """Run the PURE Review Extractor on reviews required by frozen Phase 1 sessions.
 
-This stage does not compute recommendation NDCG. Its purpose is to validate the
-first PURE component on real canonical reviews before profile updating and final
-recommendation are introduced.
-
-For a recommendation target at position t, only reviews from interactions before
-t are eligible. Unique observed reviews are extracted once and later reused by
-the evolving profile.
+Local results remain under ignored ``outputs/``. A compact result/error handoff is
+also written to ``handoff/latest.json`` and automatically pushed so experiment
+outputs do not need to be copied manually into chat.
 """
 
 from __future__ import annotations
@@ -22,6 +18,7 @@ SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from pure_recommender.experiment_handoff import publish_handoff
 from pure_recommender.llm import OpenAICompatibleLLMClient, load_local_llm_config
 from pure_recommender.phase2 import load_histories, load_sessions
 from pure_recommender.phase3 import build_required_extraction_tasks, load_phase3_config
@@ -64,6 +61,42 @@ def _format_values(values: list[str], limit: int = 3) -> str:
     return "[" + "; ".join(shown) + "]" + suffix
 
 
+def _publish(payload: dict[str, object], status_word: str) -> None:
+    ok, message = publish_handoff(
+        REPO_ROOT,
+        payload,
+        commit_message=f"handoff: phase3 review extractor {status_word.lower()}",
+        auto_push=True,
+    )
+    label = "HANDOFF" if ok else "HANDOFF WARNING"
+    print(f"{label}: {message}")
+
+
+def _pilot_rows(tasks, latest_results: dict[str, dict[str, object]]) -> list[dict[str, object]]:
+    """Return tiny qualitative samples only for short pilot runs."""
+
+    if len(tasks) > 5:
+        return []
+    rows: list[dict[str, object]] = []
+    for task in tasks:
+        result = latest_results.get(task.task_id, {})
+        interaction = task.interaction
+        rows.append(
+            {
+                "task_id": task.task_id,
+                "title": interaction.get("title"),
+                "rating": interaction.get("rating"),
+                "source_review": interaction.get("review_text"),
+                "status": result.get("status", "missing"),
+                "extraction": result.get("extraction"),
+                "extraction_details": result.get("extraction_details"),
+                "error": result.get("error"),
+                "raw_response": result.get("raw_response"),
+            }
+        )
+    return rows
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run PURE Phase 3 Review Extractor")
     parser.add_argument(
@@ -92,11 +125,7 @@ def main() -> int:
     histories = load_histories(config.input.interactions_path)
     sessions = load_sessions(config.input.sessions_path)
     all_tasks = build_required_extraction_tasks(histories, sessions)
-    tasks = (
-        all_tasks
-        if config.experiment.max_extractions == 0
-        else all_tasks[: config.experiment.max_extractions]
-    )
+    tasks = all_tasks if config.experiment.max_extractions == 0 else all_tasks[: config.experiment.max_extractions]
 
     client = OpenAICompatibleLLMClient(
         base_url=llm_config.base_url,
@@ -116,9 +145,7 @@ def main() -> int:
 
     latest_results = _load_latest_results(results_path) if config.experiment.resume else {}
     completed_ok = {
-        task_id
-        for task_id, row in latest_results.items()
-        if row.get("status") == "ok"
+        task_id for task_id, row in latest_results.items() if row.get("status") == "ok"
     }
 
     print("\n" + "=" * 88)
@@ -132,8 +159,9 @@ def main() -> int:
     print(f"Temperature              : {config.generation.temperature}")
     print(f"Max output tokens        : {config.generation.max_tokens}")
     print(f"Generation seed          : {config.generation.seed}")
-    print("Structured output        : JSON Schema")
-    print("Grounding validation     : verbatim review span")
+    print("Structured output        : evidence-backed JSON Schema")
+    print("Grounding validation     : verbatim evidence span")
+    print("Automatic handoff        : ON (handoff/latest.json)")
     print(f"Resume                   : {config.experiment.resume}")
     if "uncensored" in llm_config.model.lower():
         print("Model alignment           : derivative local model; not exact paper checkpoint")
@@ -152,8 +180,7 @@ def main() -> int:
         source_review = str(interaction["review_text"])
 
         print(
-            f"[{ordinal:03d}/{len(tasks):03d}] {task.task_id}: "
-            f"ASIN={asin}, title={title!r} ...",
+            f"[{ordinal:03d}/{len(tasks):03d}] {task.task_id}: ASIN={asin}, title={title!r} ...",
             flush=True,
         )
         started = time.perf_counter()
@@ -169,11 +196,9 @@ def main() -> int:
             )
             elapsed = time.perf_counter() - started
             raw_content = response.content
-            extraction = parse_review_extraction(
-                raw_content,
-                source_review=source_review,
-            )
-            extraction_dict = extraction.to_dict()
+            extraction = parse_review_extraction(raw_content, source_review=source_review)
+            extraction_dict = extraction.to_profile_dict()
+            extraction_details = extraction.to_audit_dict()
 
             result: dict[str, object] = {
                 "task_id": task.task_id,
@@ -186,8 +211,9 @@ def main() -> int:
                 "status": "ok",
                 "component": "Review Extractor",
                 "model": llm_config.model,
-                "grounding_validation": "verbatim_review_span",
+                "grounding_validation": "verbatim_evidence_span",
                 "extraction": extraction_dict,
+                "extraction_details": extraction_details,
                 "latency_seconds": elapsed,
                 "usage": dict(response.usage) if response.usage else None,
                 "raw_response": raw_content,
@@ -211,7 +237,7 @@ def main() -> int:
                 "status": "error",
                 "component": "Review Extractor",
                 "model": llm_config.model,
-                "grounding_validation": "verbatim_review_span",
+                "grounding_validation": "verbatim_evidence_span",
                 "latency_seconds": elapsed,
                 "error": str(exc),
                 "raw_response": raw_content,
@@ -224,15 +250,31 @@ def main() -> int:
                 print("    RAW MODEL RESPONSE:")
                 for line in preview.splitlines() or [preview]:
                     print(f"      {line}")
+
             if config.experiment.fail_fast:
+                _publish(
+                    {
+                        "state": "ERROR",
+                        "experiment": "phase3_review_extractor",
+                        "model": llm_config.model,
+                        "requested_extractions": len(tasks),
+                        "required_unique_extractions": len(all_tasks),
+                        "failed_task": {
+                            "task_id": task.task_id,
+                            "title": title,
+                            "rating": interaction.get("rating"),
+                            "source_review": source_review,
+                            "error": str(exc),
+                            "raw_response": raw_content,
+                        },
+                        "pilot_rows": _pilot_rows(tasks, latest_results),
+                    },
+                    "ERROR",
+                )
                 raise
 
     requested_ids = [task.task_id for task in tasks]
-    requested_results = [
-        latest_results[task_id]
-        for task_id in requested_ids
-        if task_id in latest_results
-    ]
+    requested_results = [latest_results[task_id] for task_id in requested_ids if task_id in latest_results]
     ok_results = [row for row in requested_results if row.get("status") == "ok"]
     error_results = [row for row in requested_results if row.get("status") != "ok"]
 
@@ -277,8 +319,8 @@ def main() -> int:
             "temperature": config.generation.temperature,
             "max_tokens": config.generation.max_tokens,
             "seed": config.generation.seed,
-            "structured_output": "json_schema",
-            "grounding_validation": "verbatim_review_span",
+            "structured_output": "evidence_backed_json_schema",
+            "grounding_validation": "verbatim_evidence_span",
         },
         "extracted_entry_counts": extracted_counts,
         "usage_totals": {
@@ -311,6 +353,24 @@ def main() -> int:
     print(f"status                      : {status}")
     print(f"results                     : {results_path}")
     print(f"summary                     : {summary_path}")
+
+    _publish(
+        {
+            "state": "RESULT",
+            "experiment": "phase3_review_extractor",
+            "summary": summary,
+            "pilot_rows": _pilot_rows(tasks, latest_results),
+            "errors": [
+                {
+                    "task_id": row.get("task_id"),
+                    "error": row.get("error"),
+                    "raw_response": row.get("raw_response"),
+                }
+                for row in error_results[:10]
+            ],
+        },
+        status,
+    )
 
     return 0 if status == "PASS" else 1
 
