@@ -1,23 +1,24 @@
-"""PURE Review Extractor prompt, schema, and strict evidence validation.
+"""PURE Review Extractor prompt, schema, and conservative evidence validation.
 
 The paper's Algorithm 1 extracts likes, dislikes, and key features from the
-incoming review. The paper also reports JSON-schema structured outputs but does
-not publish the exact schema.
+incoming review and reports using JSON-schema structured outputs, but it does
+not publish the exact schema or grounding/post-processing rules.
 
-Pilot v1/v2 showed that a small local model may copy title-only attributes. A
-strict verbatim-only output rule in pilot v3 fixed title leakage but rejected a
-legitimate paraphrase (``breathing LEDs``) even though the review explicitly said
-that the LEDs can ``breathe``. The accepted protocol therefore separates the
-model's concise interpretation from its evidence span:
+Pilot v1/v2 showed title leakage. Pilot v3 made every output string verbatim and
+became too restrictive for legitimate paraphrases. Pilot v4 separated a concise
+``value`` from a verbatim ``evidence`` span, but the local derivative model could
+still occasionally fabricate an evidence span from the visible product title.
 
+The accepted-candidate policy therefore validates each generated entry
+independently:
 - ``value`` may be a concise paraphrase/normalization;
-- ``evidence`` must be a short contiguous verbatim span from the review text;
-- only evidence-backed entries are accepted;
-- the downstream safe extraction uses the verbatim evidence spans, while the
-  model's normalized values are retained only for audit/inspection.
+- ``evidence`` must be a contiguous span of the review text;
+- entries with unsupported evidence are rejected and logged individually;
+- valid entries from the same response are preserved;
+- downstream profile input uses only validated review evidence spans.
 
-This preserves semantic flexibility without allowing product-title-only content
-to enter the evolving profile.
+This is conservative filtering, not semantic repair: rejected entries are not
+rewritten, inferred, or replaced.
 """
 
 from __future__ import annotations
@@ -41,22 +42,41 @@ SYSTEM_PROMPT = (
 
 @dataclass(frozen=True, slots=True)
 class ReviewEvidenceEntry:
-    """One model interpretation anchored to an exact review-text span."""
+    """One model interpretation anchored to a claimed review-text span."""
 
     value: str
     evidence: str
 
 
 @dataclass(frozen=True, slots=True)
+class RejectedEvidenceEntry:
+    """One generated entry rejected by deterministic grounding validation."""
+
+    field: str
+    value: str
+    evidence: str
+    reason: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "field": self.field,
+            "value": self.value,
+            "evidence": self.evidence,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReviewExtraction:
-    """Evidence-backed representation extracted from one interaction."""
+    """Validated evidence-backed representation extracted from one interaction."""
 
     likes: tuple[ReviewEvidenceEntry, ...]
     dislikes: tuple[ReviewEvidenceEntry, ...]
     key_features: tuple[ReviewEvidenceEntry, ...]
+    rejected_entries: tuple[RejectedEvidenceEntry, ...] = ()
 
     def to_profile_dict(self) -> dict[str, list[str]]:
-        """Return only review-verbatim evidence strings safe for profile input."""
+        """Return only validated review-verbatim evidence safe for profile input."""
 
         return {
             "likes": [entry.evidence for entry in self.likes],
@@ -65,7 +85,7 @@ class ReviewExtraction:
         }
 
     def to_audit_dict(self) -> dict[str, list[dict[str, str]]]:
-        """Return model values plus evidence for debugging and qualitative audit."""
+        """Return accepted model values plus validated evidence for audit."""
 
         return {
             "likes": [
@@ -82,7 +102,9 @@ class ReviewExtraction:
             ],
         }
 
-    # Backward-friendly name used by runner/tests: downstream-safe profile data.
+    def rejected_to_dict(self) -> list[dict[str, str]]:
+        return [entry.to_dict() for entry in self.rejected_entries]
+
     def to_dict(self) -> dict[str, list[str]]:
         return self.to_profile_dict()
 
@@ -100,9 +122,7 @@ def _entry_array(description: str) -> dict[str, object]:
                 },
                 "evidence": {
                     "type": "string",
-                    "description": (
-                        "Short contiguous verbatim quote copied exactly from the review text."
-                    ),
+                    "description": "Short contiguous verbatim quote copied exactly from the review text.",
                 },
             },
             "required": ["value", "evidence"],
@@ -243,13 +263,20 @@ def _normalize_grounding_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip().casefold()
 
 
-def _validate_review_grounding(
+def _partition_grounded_entries(
     extraction: ReviewExtraction,
     source_review: str,
-) -> None:
+) -> ReviewExtraction:
     normalized_review = _normalize_grounding_text(source_review)
     if not normalized_review:
         raise ValueError("Cannot validate Review Extractor grounding against an empty review")
+
+    accepted: dict[str, list[ReviewEvidenceEntry]] = {
+        "likes": [],
+        "dislikes": [],
+        "key_features": [],
+    }
+    rejected: list[RejectedEvidenceEntry] = []
 
     for field_name, entries in (
         ("likes", extraction.likes),
@@ -258,11 +285,24 @@ def _validate_review_grounding(
     ):
         for entry in entries:
             normalized_evidence = _normalize_grounding_text(entry.evidence)
-            if normalized_evidence not in normalized_review:
-                raise ValueError(
-                    "Review Extractor produced non-verbatim review evidence; "
-                    f"field={field_name!r}, value={entry.value!r}, evidence={entry.evidence!r}"
+            if normalized_evidence in normalized_review:
+                accepted[field_name].append(entry)
+            else:
+                rejected.append(
+                    RejectedEvidenceEntry(
+                        field=field_name,
+                        value=entry.value,
+                        evidence=entry.evidence,
+                        reason="evidence_not_contiguous_span_of_review",
+                    )
                 )
+
+    return ReviewExtraction(
+        likes=tuple(accepted["likes"]),
+        dislikes=tuple(accepted["dislikes"]),
+        key_features=tuple(accepted["key_features"]),
+        rejected_entries=tuple(rejected),
+    )
 
 
 def parse_review_extraction(
@@ -270,11 +310,12 @@ def parse_review_extraction(
     *,
     source_review: str | None = None,
 ) -> ReviewExtraction:
-    """Parse and strictly validate one evidence-backed extraction.
+    """Parse one evidence-backed extraction and conservatively reject bad entries.
 
-    No semantic repair, deduplication, category migration, or inferred evidence is
-    performed. When a source review is provided, every evidence string must be a
-    contiguous review span after case/whitespace normalization.
+    Structural schema violations still fail the whole response. When a source
+    review is provided, grounding is evaluated entry-by-entry: unsupported
+    evidence entries are excluded from the profile-safe representation and kept
+    in ``rejected_entries`` for audit. No rejected entry is rewritten or replaced.
     """
 
     payload = _extract_json_object(text)
@@ -294,5 +335,5 @@ def parse_review_extraction(
         key_features=_parse_entry_list(payload["key_features"], "key_features"),
     )
     if source_review is not None:
-        _validate_review_grounding(extraction, source_review)
+        extraction = _partition_grounded_entries(extraction, source_review)
     return extraction
