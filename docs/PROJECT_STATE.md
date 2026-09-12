@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 hybrid-output pilot v4 produced valid final rankings for 8/8 diagnostic sessions and is accepted for a clean 94-session full validation. Phase 5 is not frozen until that all-94 run passes.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines remain historical records. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender PASS / FROZEN after a clean 94/94 hybrid-output run. Phase 6 controlled final baseline reruns have started; Sequential is READY.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -30,14 +30,18 @@ Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3
 - KV Cache GPU Offload ON
 - Flash Attention ON
 - K/V cache quantization OFF
-- current Phase 3/4/5 API experiments explicitly send temperature 0.0 and seed 42
+- final Phase 3/4/5 and Phase 6 API experiments explicitly send temperature 0.0 and seed 42
+
+Temperature 0.0 plus seed 42 is recorded for reproducibility but is not treated as a guarantee of bit-for-bit identical generation across separate LM Studio executions.
 
 ## Phase 2 historical purchased-item baselines
+Historical results preserved from the earlier protocol:
+
 - Sequential NDCG@1/5/10/20: 0.061667 / 0.182577 / 0.227799 / 0.366378
 - Recency-Focused: 0.078333 / 0.199726 / 0.239947 / 0.378652
 - ICL: 0.061667 / 0.186356 / 0.255724 / 0.371370
 
-These remain historical records. Final thesis comparison must rerun compared methods under the finalized runtime and final adopted output policy rather than overwrite historical artifacts.
+These remain historical records only. The final thesis comparison reruns each method under the finalized runtime/generation settings and final hybrid output-validation policy. Historical artifacts are not overwritten.
 
 ## Phase 3 Review Extractor — PASS / FROZEN
 Official source: `outputs/phase3_review_extractor_final_1024/`
@@ -51,6 +55,8 @@ Final homogeneous run:
 - total reported tokens: 97,350
 - mean latency: 5.408 s
 - temperature 0.0, seed 42, max output tokens 1024
+
+Only accepted profile-safe extraction strings feed Phase 4.
 
 ## Phase 4 Profile Updater — PASS / FROZEN
 Official state artifact: `outputs/phase4_profile_updater_final_v4/profile_states.jsonl`
@@ -78,77 +84,94 @@ Final full run:
 
 For recommendation target position `t`, Phase 5 uses only profile state `(user_id, t-1)`.
 
-## Phase 5 PURE Recommender
-Paper behavior is preserved: updated profile + purchased items + 20 next-purchase candidates. The paper does not publish an exact machine-readable output schema or exact purchased-item serialization.
+## Phase 5 PURE Recommender — PASS / FROZEN
+The final accepted policy is the hybrid direct-primary + rank-map-fallback protocol.
 
-Shared reproduction choices:
-- chronological purchased-item titles are prepended;
-- profile categories come from the exact frozen Phase 4 state;
-- frozen candidates are numbered 1..20 using titles; ASINs are hidden from the model;
-- no target marker or future review is shown;
-- temperature 0.0, seed 42, max tokens 512, and finalized runtime remain fixed;
-- malformed model output is never silently repaired.
-
-### Direct-ranking full attempt 1 — INCOMPLETE
-- requested/successful/failed: 94 / 92 / 2
-- provisional 92-session NDCG@1/5/10/20: 0.104435 / 0.247248 / 0.318287 / 0.416851
-- failed sessions: `A3RQZ1J5F5G104:10`, `A26C4UAI3IXYF:6`
-- both malformed outputs repeated candidate 20 and omitted another candidate despite the requested uniqueness constraint.
-
-### Formatting-only retry — REJECTED
-A same-seed corrective retry failed 0/2 and reproduced the malformed pattern, so this is not accepted as a recovery policy.
-
-### Scored-output pilot v2 — STRUCTURAL PASS / FINAL POLICY REJECTED
-8/8 succeeded structurally, including both direct failures, but all 8 sessions contained score ties and 152 candidate participations occurred in tied groups. Frozen candidate-order tie-breaking therefore determined too much of the ranking.
-
-### Standalone rank-map pilot v3 — INCOMPLETE / REJECTED AS STANDALONE
-- requested/successful/failed: 8 / 6 / 2
-- both historical direct failures succeeded under rank-map
-- two other sessions failed because rank 16 was duplicated and another rank was missing.
-
-The direct and rank-map serializations therefore showed complementary failure behavior.
-
-### Hybrid-output pilot v4 — ACCEPTED FOR FULL VALIDATION
 Uniform policy for every session:
-1. issue the direct ranking-array request first;
+1. issue the direct ranking-array request;
 2. validate with the strict complete-permutation parser;
-3. only on a structural direct parser failure, discard the invalid response and issue one fresh rank-map request with the same frozen inputs/settings;
-4. do not show the invalid primary response to the fallback;
-5. allow at most one fallback request;
-6. require the fallback to pass the strict rank-map parser;
-7. never perform post-generation candidate repair.
+3. only on structural direct-parser failure, discard that malformed output and issue one fresh rank-map request from the same frozen history/profile/candidates;
+4. do not show the malformed primary response to the fallback;
+5. permit at most one fallback request per session;
+6. require the fallback to pass strict rank-map validation;
+7. never repair candidates post-generation;
+8. API or unrelated validation failures do not silently trigger fallback.
 
-Observed pilot result:
-- requested/successful/failed: 8 / 8 / 0
-- direct-primary successes: 7
+This is an explicit reproduction engineering choice because the paper does not publish an exact machine-readable output schema.
+
+### Final hybrid full v4
+Authoritative local output: `outputs/phase5_pure_recommender_hybrid_final_v4/`
+
+- requested/successful/failed sessions: 94 / 94 / 0
+- users: 20
+- direct-primary successes: 93
 - fallback attempts/successes: 1 / 1
-- both historical standalone rank-map failures succeeded on the direct-primary path
-- `A26C4UAI3IXYF:6` failed direct and was recovered by rank-map fallback
-- `A3RQZ1J5F5G104:10`, which had failed direct in the earlier full run, produced a valid direct ranking in this rerun
-- diagnostic NDCG@1/5/10/20: 0.000000 / 0.123630 / 0.236517 / 0.313679
+- total LLM requests: 95
+- fallback session: `A26C4UAI3IXYF:6`
+- fallback direct error: `Ranking contains duplicate candidate numbers`
+- fallback target rank: 9
+- status: **PASS / FROZEN**
 
-The runner's historical handoff emitted `INCOMPLETE` only because its pilot-specific acceptance counter incorrectly required both previously known direct-failure IDs to fail direct again and be counted as fallback recoveries. That is not an invariant of the hybrid policy. All 8 sessions actually ended with valid strict-parser rankings, and every fallback that was triggered succeeded. Detailed record: `docs/PHASE5_PURE_RECOMMENDER_HYBRID_PILOT_V4.md`.
+Final NDCG:
+- NDCG@1: **0.10425070028011205**
+- NDCG@5: **0.24355349242822116**
+- NDCG@10: **0.3183764185292945**
+- NDCG@20: **0.4160225252419735**
 
-The differing direct outcome for `A3RQZ1J5F5G104:10` across separate executions also means temperature 0.0 plus seed 42 on the local backend must not be treated as a guarantee of bit-for-bit identical generation. Actual protocol path is recorded per session.
+Usage/latency:
+- prompt/completion/total tokens: 101,887 / 6,938 / 108,825
+- mean/max prompt tokens per request: 1,072.495 / 2,801
+- total request latency: 205.935 s
+- mean request latency: 2.168 s
+- mean/median session latency: 2.191 / 2.028 s
 
-## Phase 5 hybrid full v4 — READY
-The full runner applies the same hybrid policy uniformly to all 94 frozen sessions from scratch.
+Detailed record: `docs/PHASE5_PURE_RECOMMENDER_FINAL_RESULTS.md`.
+
+## Phase 6 — Final controlled baseline reruns
+Goal: build the thesis-grade comparison table only after Sequential, Recency-Focused, and ICL are rerun on the same 94 sessions under the same finalized runtime/generation controls and the same hybrid mechanical output policy used by final PURE.
+
+Shared final comparison controls:
+- same 20 users and 94 frozen sessions;
+- same 20 frozen candidates and candidate order;
+- temperature 0.0;
+- seed 42;
+- max output tokens 512;
+- direct structured ranking request first;
+- one fresh rank-map fallback only after strict direct structural failure;
+- no malformed output repair;
+- same user-level NDCG aggregation.
+
+Method semantics remain distinct and paper-aligned: the shared hybrid policy changes only machine-readable serialization/validation, not what information each recommender sees.
+
+Protocol: `docs/PHASE6_FINAL_BASELINE_RERUN_PROTOCOL.md`.
+
+### Phase 6A Sequential — READY
+Sequential still sees only chronological purchased-item titles and frozen candidate titles. Reviews, ratings, PURE profiles, future information, and target markers are excluded.
 
 Files:
-- config: `config/phase5_pure_recommender_hybrid_full.toml`
-- runner: `scripts/run_phase5_pure_recommender_hybrid_full.py`
-- safe wrapper: `scripts/run_phase5_pure_recommender_hybrid_full_safe.py`
-- output: `outputs/phase5_pure_recommender_hybrid_final_v4/`
+- config: `config/phase6_sequential_hybrid.toml`
+- direct prompt: existing `src/pure_recommender/baselines/sequential.py`
+- rank-map fallback prompt: `src/pure_recommender/baselines/sequential_rankmap.py`
+- runner: `scripts/run_phase6_sequential_hybrid.py`
+- safe wrapper: `scripts/run_phase6_sequential_hybrid_safe.py`
+- output: `outputs/phase6_sequential_hybrid_final_v1/`
 
-Final PASS criteria:
-- exactly 94 frozen sessions attempted;
-- all 94 finish with a valid complete ranking;
-- zero session failures;
-- direct structural failures may trigger at most one fresh rank-map fallback;
-- any fallback parser failure makes the session fail;
-- no post-generation candidate repair is permitted.
+Acceptance criteria:
+- exactly 94 sessions attempted;
+- 94/94 valid final rankings;
+- zero failures;
+- any triggered fallback succeeds under strict rank-map validation;
+- no post-generation repair;
+- final NDCG and protocol path counts recorded.
 
-If the full run passes 94/94, freeze Phase 5 and record final PURE NDCG. Then rerun Sequential, Recency, and ICL under the same finalized runtime and output policy for the thesis comparison table.
+## Next actions
+1. Keep LM Studio on finalized 512 / 256 / 1 and Context Length 8192.
+2. Pull the branch and run the unit tests.
+3. Run `python scripts/run_phase6_sequential_hybrid_safe.py`.
+4. Review/freeze the new Sequential result.
+5. Prepare and run Recency-Focused under the same controls.
+6. Prepare and run ICL under the same controls.
+7. Freeze the final thesis comparison table only after all three baseline reruns pass.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
