@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 still requires a final output serialization: direct ranking failed on 2/94, same-seed corrective retry failed 0/2, scored pilot v2 passed structurally 8/8 but is rejected for final use because severe score ties made candidate-order tie-breaking dominate much of the ranking. Rank-map pilot v3 is READY.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 still requires a final output policy: direct ranking failed on 2/94; same-seed corrective retry failed 0/2; scored pilot v2 passed 8/8 but was rejected because severe ties made candidate-order tie-breaking dominate; standalone rank-map pilot v3 is INCOMPLETE at 6/8. A uniform direct-primary + rank-map-fallback pilot v4 is READY.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -37,7 +37,7 @@ Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3
 - Recency-Focused: 0.078333 / 0.199726 / 0.239947 / 0.378652
 - ICL: 0.061667 / 0.186356 / 0.255724 / 0.371370
 
-These remain historical records. Final thesis comparison must rerun compared methods under the finalized runtime and final adopted output protocol rather than overwrite historical artifacts.
+These remain historical records. Final thesis comparison must rerun compared methods under the finalized runtime and final adopted output policy rather than overwrite historical artifacts.
 
 ## Phase 3 Review Extractor — PASS / FROZEN
 Official source: `outputs/phase3_review_extractor_final_1024/`
@@ -101,61 +101,72 @@ Shared reproduction choices across all Phase 5 output protocols:
 The provisional metrics are not final.
 
 ### Formatting-only corrective retry — REJECTED
-Same model, prompt context, temperature, seed, token cap, and ranking schema were used, with the previous malformed response shown back to the model and only a format correction requested.
-
-Result: 0/2 successful. Both malformed rankings were reproduced exactly enough to fail the same strict parser rule. Deterministic same-seed retry is rejected as a recovery policy.
+Result: 0/2 successful. Both malformed direct rankings were reproduced under the same deterministic retry policy, so same-seed corrective retry is not accepted.
 
 ### Scored-output pilot v2 — TECHNICAL PASS / FINAL POLICY REJECTED
-Coverage: original six pilot sessions + both known direct-ranking failures = 8 sessions.
-
-Result:
 - requested/successful/failed: 8 / 8 / 0
 - known direct failures recovered structurally: 2 / 2
 - diagnostic NDCG@1/5/10/20: 0.000000 / 0.265402 / 0.265402 / 0.390355
-- mean/max prompt tokens: 883.875 / 1,658
-- mean completion tokens: 156.625
-- mean latency: 3.849 s
-
-Tie audit:
 - sessions with score ties: 8 / 8
 - total tie groups: 12
 - candidates participating in tied groups: 152
-- several sessions tied 19 or all 20 candidates.
 
-Therefore frozen candidate-number tie-breaking determined too much of the final ordering. The scored protocol is useful as a structural diagnostic but is not accepted as the thesis-grade ranking protocol.
+The scored protocol was rejected for final use because frozen candidate-order tie-breaking determined too much of the ordering.
 
 Detailed record: `docs/PHASE5_PURE_RECOMMENDER_SCORED_PILOT_V2.md`.
 
-## Phase 5 rank-map pilot v3 — READY
-Goal: keep the model's task explicitly as ranking while avoiding the backend's problematic unique ranking-array constraint and avoiding score ties.
+### Rank-map pilot v3 — INCOMPLETE / standalone policy rejected
+Coverage: same 8 diagnostic sessions.
 
-Protocol:
-- JSON contains one required candidate-number key for every candidate 1..20;
-- each candidate receives an explicit integer rank position 1..20;
-- strict parser requires the set of rank values to be exactly `{1,...,20}`;
-- duplicate or missing rank values fail the session;
-- no score tie-break exists;
-- no deterministic candidate insertion/deletion/reordering repair exists;
-- this remains an explicit reproduction output-serialization choice because the paper does not publish its schema.
+Result:
+- requested/successful/failed: 8 / 6 / 2
+- users represented among successful rows: 4
+- known direct-ranking failures successful under rank-map: 2 / 2
+- diagnostic six-row NDCG@1/5/10/20: 0.000000 / 0.354414 / 0.398940 / 0.430190
+- mean/max prompt tokens on successful rows: 962 / 1,666
+- mean completion tokens: 155.833
+- mean latency: 3.768 s
 
-Pilot coverage is the same diagnostic 8-session set used by scored pilot v2, including both known direct-ranking failures.
+Failed sessions:
+- `A2GSRMMRODQ4JH:4`: duplicate rank 16, missing rank 19
+- `A2GSRMMRODQ4JH:6`: duplicate rank 16, missing rank 3
+
+The strict parser correctly rejected both responses. Thus rank-map does not solve the global uniqueness problem as a standalone serialization.
+
+Important complementary observation:
+- the direct primary protocol succeeds on these two rank-map failure cases;
+- rank-map succeeds on both known direct-ranking failure cases.
+
+Detailed record: `docs/PHASE5_PURE_RECOMMENDER_RANKMAP_PILOT_V3.md`.
+
+## Phase 5 hybrid-output pilot v4 — READY
+A single predefined conditional output policy is now under test for every session.
+
+Policy:
+1. issue the direct ranking-array request first;
+2. validate it with the strict complete-permutation parser;
+3. if and only if that model output is structurally invalid, discard it and issue one fresh rank-map request using the same frozen history, profile, candidates, model, temperature, seed, and token cap;
+4. the invalid direct response is not shown to the fallback call;
+5. accept the fallback only if the strict rank-map parser validates a complete permutation;
+6. no candidate is inserted, removed, reordered, inferred, rescored, or otherwise repaired after generation;
+7. API failures or unrelated validation failures do not silently trigger fallback.
+
+This is a uniform conditional protocol applied to all sessions, not a manual patch for named failures.
+
+Pilot coverage is the same eight-session diagnostic set. Acceptance criteria:
+- 8/8 sessions successful;
+- both known direct-ranking failures must be recovered by rank-map fallback;
+- both known standalone rank-map failures must succeed through the direct primary path;
+- no session may require post-generation repair;
+- at most one fallback request is allowed per session.
 
 Files:
-- implementation: `src/pure_recommender/pure/recommender_rankmap.py`
-- config: `config/phase5_pure_recommender_rankmap_pilot.toml`
-- runner: `scripts/run_phase5_pure_recommender_rankmap_pilot.py`
-- safe wrapper: `scripts/run_phase5_pure_recommender_rankmap_pilot_safe.py`
-- tests: `tests/test_pure_recommender_rankmap.py`
-- output: `outputs/phase5_pure_recommender_rankmap_pilot_v3/`
+- config: `config/phase5_pure_recommender_hybrid_pilot.toml`
+- runner: `scripts/run_phase5_pure_recommender_hybrid_pilot.py`
+- safe wrapper: `scripts/run_phase5_pure_recommender_hybrid_pilot_safe.py`
+- output: `outputs/phase5_pure_recommender_hybrid_pilot_v4/`
 
-Acceptance criteria:
-- 8/8 sessions successful;
-- both known direct-ranking failures successful;
-- every response contains all 20 candidate keys;
-- rank values form an exact 1..20 permutation;
-- no retry, tie-break, or post-generation repair is used.
-
-If the rank-map pilot passes, prepare a new clean all-94 run from scratch under this one homogeneous protocol. Freeze PURE only after a clean 94/94 result. Then rerun Sequential, Recency, and ICL with the same final output serialization for the thesis comparison table.
+If this pilot passes, the exact same conditional policy will be used in a clean all-94 run from scratch. Only a complete 94/94 run can become the final PURE metric artifact. Sequential, Recency, and ICL must then be rerun with the same final output policy for the thesis comparison table.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
