@@ -3,7 +3,6 @@
 from .profile_updater import (
     PAPER_UPDATER_INSTRUCTION,
     UserProfile,
-    apply_retention_guard,
     build_profile_id_map,
     build_profile_updater_messages,
     concatenate_profile_and_extraction,
@@ -11,6 +10,10 @@ from .profile_updater import (
     parse_profile_update,
     profile_from_mapping,
     profile_updater_response_format,
+)
+from .profile_updater_guard_v4 import (
+    apply_retention_guard,
+    is_more_informative_overlap,
 )
 from .review_extractor import (
     RejectedEvidenceEntry,
@@ -33,6 +36,7 @@ __all__ = [
     "build_review_extractor_messages",
     "concatenate_profile_and_extraction",
     "is_clear_lexical_overlap",
+    "is_more_informative_overlap",
     "parse_profile_update",
     "parse_review_extraction",
     "profile_from_mapping",
