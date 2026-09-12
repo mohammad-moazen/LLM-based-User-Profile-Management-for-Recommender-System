@@ -11,10 +11,12 @@ interactions_path = "outputs/phase1/interactions.jsonl.gz"
 sessions_path = "outputs/phase1/sessions.jsonl.gz"
 
 [experiment]
-# Validate ICL prompt/output behavior on three real sessions before all 94.
-max_sessions = 3
+# Three-session pilot passed. Evaluate all 94 frozen sessions; resume skips the
+# three already successful pilot sessions. Keep running after an isolated malformed
+# response so failed sessions can be retried without losing completed work.
+max_sessions = 0
 resume = true
-fail_fast = true
+fail_fast = false
 
 [generation]
 temperature = 0.0
