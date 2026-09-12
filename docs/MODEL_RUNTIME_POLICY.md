@@ -41,7 +41,7 @@ Policy from this point forward:
 2. Any metric produced with it must be labeled **local derivative-model result**, not exact paper-model reproduction.
 3. The frozen Phase 1 data, chronological sessions, candidate sets, leakage rules, and NDCG aggregation remain unchanged; only the backbone model differs from the paper.
 4. If the exact reference checkpoint is tested later, it will be reported as a separate paper-aligned run rather than silently replacing earlier results.
-5. Record model identifier, source/checkpoint description when known, quantization, context length, GPU offload, generation settings, backend/runtime version, and relevant performance notes for every meaningful LLM experiment.
+5. Record model identifier, source/checkpoint description when known, quantization, context length, GPU offload, generation settings, backend/runtime version, cache settings, and relevant performance notes for every meaningful LLM experiment.
 
 ## Initial local settings target
 For the currently active local experiments:
@@ -59,6 +59,21 @@ For a future exact-reference run, the prior target remains:
 - initial context length target: 8192 tokens
 
 These runtime choices are reproduction decisions and must not be attributed to the paper unless explicitly reported there.
+
+## llama-server host-memory cache observation
+During repeated Phase 2 local runs, the user observed that the Windows `llama-server.exe` process retained progressively more system RAM between runs.
+
+Current llama.cpp releases include a RAM-backed prompt cache and idle-slot cache. This can make process RSS grow across many distinct requests even when the Python runner itself is not leaking memory. Because our evaluation sends many mostly distinct per-session prompts, cross-request prompt caching offers limited experimental value and can make memory behavior harder to interpret.
+
+Runtime policy for scientific runs:
+1. Do not change cache behavior in the middle of a baseline whose results are already partially collected.
+2. A server restart is allowed between runs to clear process-local caches; the restart must not change model, quantization, context length, prompt code, candidate sets, or generation settings.
+3. After the current ICL baseline is completed, perform a clean-runtime validation pass with llama-server prompt caching disabled if the active runtime exposes the relevant options.
+4. For direct llama-server launches, the preferred clean-run settings are `--cache-ram 0 --no-cache-idle-slots --no-cache-prompt` when supported by the installed build.
+5. If RAM continues to grow materially with prompt caching disabled, record the llama.cpp/LM Studio engine version and treat it as a possible runtime memory leak rather than normal cache growth.
+6. Baselines compared in the final report should use the same cache policy. If the cache policy changes, rerun all compared baselines under the new policy rather than mixing metrics from different runtime-cache conditions.
+
+The purpose of disabling prompt caching in the clean validation pass is reproducibility and bounded memory usage, not improving recommendation quality. Cache policy is a runtime engineering choice and is not specified by the PURE paper.
 
 ## Backend abstraction
 Current code location:
