@@ -38,12 +38,12 @@ Rules:
 - downstream profile input uses only validated review evidence strings;
 - redundancy/conflict handling remains the responsibility of Profile Updater.
 
-## Pilot v5 grounding policy: entry-level conservative filtering
+## Accepted v5 grounding policy: entry-level conservative filtering
 Pilot v4 demonstrated that one unsupported evidence item should not discard other valid review-grounded entries from the same otherwise-usable response.
 
-Pilot v5 therefore validates each generated entry independently:
+The accepted v5 policy validates each generated entry independently:
 
-1. structural/schema violations still fail the entire response;
+1. structural/schema violations fail the entire response;
 2. each `evidence` string is checked against the canonical review after case/whitespace normalization;
 3. grounded entries are accepted unchanged;
 4. unsupported entries are rejected individually and logged with field, value, evidence, and reason;
@@ -51,6 +51,8 @@ Pilot v5 therefore validates each generated entry independently:
 6. only accepted evidence can enter the downstream-safe profile representation.
 
 This is conservative filtering rather than semantic repair. It is an explicit reproduction engineering choice for the active local derivative model because the paper does not publish an exact grounding validator.
+
+A known limitation is that the audit-only `value` can occasionally be broader or less precisely aligned with its selected evidence span. Because `value` is **not** used for profile construction, this cannot inject unsupported content into the downstream-safe profile. Some accepted evidence spans may also be longer than ideal or overlap categories; Profile Updater is responsible for later consolidation.
 
 ## Frozen experimental basis
 - Dataset: Amazon Review Data 2018 / Video Games 5-core
@@ -78,26 +80,39 @@ Mechanical verbatim grounding blocked title leakage but rejected a legitimate pa
 ### Pilot v4
 Evidence-backed schema worked for the first review, but Review 2 included an unsupported title-derived evidence claim (`rainbow backlit wired gaming keyboard mouse combo`). The deterministic validator caught it and fail-fast stopped before Review 3. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`.
 
-### Pilot v5 gate
-Pilot v5 reruns the same first three reviews with the same model/generation/runtime settings and entry-level conservative evidence filtering.
+### Pilot v5 — PASS / accepted
+The same three reviews were processed successfully with the entry-level conservative filter:
+- 3/3 successful extractions;
+- 0 failed extractions;
+- 6 accepted likes entries;
+- 2 accepted dislikes entries;
+- 3 accepted key-feature entries;
+- 1 unsupported entry explicitly rejected;
+- 1,898 total reported tokens;
+- 3.999 seconds mean latency.
 
-Output directory:
+The rejected entry was the title-derived `backlit` claim from Review 2. It was logged and excluded while the three grounded entries from that same response were preserved. No unsupported evidence entered the downstream-safe extraction.
 
-`outputs/phase3_review_extractor_v5/`
+Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`.
 
-Checked-in settings:
-- `max_extractions = 3`
+## Full extraction run
+Pilot v5 is accepted. The checked-in configuration now enables all 134 required historical review extractions using the exact same v5 policy:
+
+- `max_extractions = 0`
 - `resume = true`
-- `fail_fast = true`
+- `fail_fast = false`
+- output directory: `outputs/phase3_review_extractor_v5/`
 
-Pilot v5 is accepted if all three responses are structurally valid, all profile-safe stored entries are review-grounded, any unsupported generated entries are explicitly logged/rejected, no title-only content survives into the safe extraction, and category assignment is qualitatively reasonable.
+Because the first three accepted tasks already exist locally in that directory, resume should skip them and process the remaining 131. Any task-level failures are retained and can be retried with the same resume mechanism.
 
-After a clean v5 pilot, `max_extractions` can be changed to `0` and `fail_fast` to `false` for all 134 required historical reviews.
+The Review Extractor is not considered fully frozen until the complete 134-task run reaches 134 successful / 0 failed and its rejection statistics are reviewed.
 
 ## Automatic experiment handoff
 The runner publishes a compact result/error payload to `handoff/latest.json` and automatically commits/pushes only that path. This removes the need to paste long terminal outputs into chat. Full experiment artifacts remain local under ignored `outputs/` directories.
 
 After ChatGPT reads a handoff, durable findings are recorded in project docs and the mailbox is reset to `READY` for the next run. See `docs/EXPERIMENT_HANDOFF.md`.
+
+For fatal wrapper-level exceptions, `scripts/run_phase3_review_extractor_safe.py` also captures and publishes the Python traceback so terminal traceback copying is unnecessary.
 
 ## Relevant files
 - `config/phase3_review_extractor.toml`
@@ -105,13 +120,15 @@ After ChatGPT reads a handoff, durable findings are recorded in project docs and
 - `src/pure_recommender/experiment_handoff.py`
 - `src/pure_recommender/phase3/tasks.py`
 - `scripts/run_phase3_review_extractor.py`
+- `scripts/run_phase3_review_extractor_safe.py`
 - `scripts/inspect_phase3_review_extractor_pilot.py`
 - `tests/test_review_extractor.py`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`
+- `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`
 - `docs/EXPERIMENT_HANDOFF.md`
 
 ## Local outputs
-Historical pilot outputs remain untracked under v1-v5 output directories. Each run writes `extractions.jsonl` and `summary.json` locally.
+Historical pilot outputs remain untracked under v1-v5 output directories. The accepted v5 directory is reused for the full run so resume preserves the three accepted pilot tasks. Each run writes `extractions.jsonl` and `summary.json` locally.
