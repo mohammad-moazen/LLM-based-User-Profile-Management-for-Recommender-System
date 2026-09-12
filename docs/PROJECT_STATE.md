@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender pilot v1 PASS; full 94-session evaluation is ready.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender pilot v1 PASS. Full attempt 1 is INCOMPLETE at 92/94 because two model outputs violated the complete-permutation ranking contract; a formatting-only corrective-retry diagnostic is ready.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -98,7 +98,7 @@ Reproduction serialization choice:
 - profile categories are serialized from the exact frozen Phase 4 state;
 - frozen candidates are shown as numbered titles 1..20;
 - ASINs remain hidden from the model;
-- structured JSON output must be a complete unique permutation of 1..20;
+- structured JSON output requests a complete unique permutation of 1..20;
 - strict parser maps candidate numbers back to the frozen ASINs without semantic repair.
 
 ### Pilot v1 — PASS
@@ -112,31 +112,52 @@ Reproduction serialization choice:
 - diagnostic NDCG@1/5/10/20: 0.000000 / 0.000000 / 0.119783 / 0.274854
 - status: PASS
 
-Pilot metrics are diagnostic only and must not be treated as the final PURE result. Detailed record: `docs/PHASE5_PURE_RECOMMENDER_PILOT_V1.md`.
+Pilot metrics are diagnostic only. Detailed record: `docs/PHASE5_PURE_RECOMMENDER_PILOT_V1.md`.
 
-## Phase 5 full 94-session evaluation — READY
-The accepted pilot protocol is unchanged. Only coverage changes from 6 sessions to all 94 frozen sessions.
+### Full attempt 1 — INCOMPLETE
+- requested sessions: 94
+- successful sessions: 92
+- failed sessions: 2
+- users represented among successful sessions: 20
+- prompt tokens: 98,825 total; 1,074.185 mean; 2,801 max
+- completion tokens: 6,639 total; 72.163 mean
+- latency: 196.672 s total; 2.138 s mean
+- provisional 92-session NDCG@1/5/10/20: 0.104435 / 0.247248 / 0.318287 / 0.416851
+- status: INCOMPLETE
 
-Files:
-- config: `config/phase5_pure_recommender_full.toml`
-- runner: `scripts/run_phase5_pure_recommender_full_safe.py`
-- output: `outputs/phase5_pure_recommender_final/`
+The provisional NDCG values are not final because two sessions are absent.
 
-Full-run requirements:
-- all 94 frozen sessions are attempted;
-- every session must map to the exact preceding frozen profile state;
-- candidate count remains 20 with the frozen candidate order;
-- invalid/malformed sessions are logged and excluded from metrics; any failure makes the run INCOMPLETE;
-- final NDCG is aggregated within user first, then averaged across users, matching the existing evaluation implementation;
-- temperature 0.0, seed 42, max tokens 512, structured ranking schema, and finalized runtime remain unchanged.
+Failed sessions:
+- `A3RQZ1J5F5G104:10`
+- `A26C4UAI3IXYF:6`
+
+Both responses contained 20 numbers but duplicated candidate 20 and omitted another candidate. The local serving backend therefore did not fully enforce the requested `uniqueItems` property. The strict parser rejected both responses, which is correct. No malformed output entered evaluation.
+
+Detailed record: `docs/PHASE5_PURE_RECOMMENDER_FULL_ATTEMPT1.md`.
+
+## Phase 5 corrective-retry diagnostic — READY
+A diagnostic now tests only the two failed local rows. It does not modify or resume the final artifact.
+
+Policy under test:
+- retain exactly the same history, profile state, candidates, model, temperature, seed, token cap, and JSON schema;
+- feed the model its previous invalid response;
+- ask only for a corrected complete permutation of 1..20;
+- allow one bounded corrective retry;
+- never insert, delete, infer, or reorder candidates deterministically after generation.
+
+Runner:
+`scripts/diagnose_phase5_malformed_rankings.py`
+
+If both corrective retries succeed, the final Phase 5 protocol will be updated to use this bounded retry policy for every session and all 94 sessions will be rerun cleanly from scratch under that homogeneous protocol. If either retry fails, the output protocol must be redesigned before final evaluation.
 
 ## Next actions
 1. Keep LM Studio on finalized 512 / 256 / 1 and Context Length 8192.
-2. Pull the branch and run unit tests.
-3. Run `python scripts/run_phase5_pure_recommender_full_safe.py`.
-4. Read the compact handoff summary.
-5. If 94/94 succeeds, freeze the final PURE result.
-6. Rerun Sequential, Recency, and ICL under the finalized generation/runtime protocol for the final thesis comparison table.
+2. Pull the branch.
+3. Run `python scripts/diagnose_phase5_malformed_rankings.py`.
+4. Inspect the handoff result for both malformed sessions.
+5. If 2/2 corrective retries pass, implement the bounded retry policy and rerun all 94 sessions cleanly.
+6. Freeze PURE only after the clean final 94/94 evaluation passes.
+7. Rerun Sequential, Recency, and ICL under the finalized generation/runtime/output policy for the final thesis comparison table.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
