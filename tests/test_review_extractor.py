@@ -41,6 +41,7 @@ class ReviewExtractorTests(unittest.TestCase):
         self.assertIn("REVIEW TEXT between the markers is the only evidence source", prompt)
         self.assertIn("value may be a concise paraphrase", prompt)
         self.assertIn("evidence MUST be a short contiguous VERBATIM quote", prompt)
+        self.assertIn("Never return an empty evidence string", prompt)
         self.assertIn("never use a title-only attribute as evidence", prompt)
         self.assertIn("never independent evidence", system_prompt)
         self.assertNotIn("123456789", prompt)
@@ -55,6 +56,8 @@ class ReviewExtractorTests(unittest.TestCase):
         item_schema = schema["properties"]["likes"]["items"]
         self.assertEqual(set(item_schema["properties"]), {"value", "evidence"})
         self.assertEqual(set(item_schema["required"]), {"value", "evidence"})
+        self.assertEqual(item_schema["properties"]["value"]["minLength"], 1)
+        self.assertEqual(item_schema["properties"]["evidence"]["minLength"], 1)
         self.assertFalse(item_schema["additionalProperties"])
         self.assertFalse(schema["additionalProperties"])
 
@@ -97,6 +100,22 @@ class ReviewExtractorTests(unittest.TestCase):
         self.assertEqual(rejected.evidence, "RGB Wired")
         self.assertEqual(rejected.reason, "evidence_not_contiguous_span_of_review")
 
+    def test_blank_evidence_is_filtered_and_logged_not_whole_response_failure(self):
+        extraction = parse_review_extraction(
+            '{"likes":[{"value":"lightweight","evidence":"light weight"}],'
+            '"dislikes":[],"key_features":['
+            '{"value":"wireless connectivity","evidence":""}]}',
+            source_review=self.interaction["review_text"],
+        )
+        self.assertEqual(extraction.to_profile_dict()["likes"], ["light weight"])
+        self.assertEqual(extraction.to_profile_dict()["key_features"], [])
+        self.assertEqual(len(extraction.rejected_entries), 1)
+        rejected = extraction.rejected_entries[0]
+        self.assertEqual(rejected.field, "key_features")
+        self.assertEqual(rejected.value, "wireless connectivity")
+        self.assertEqual(rejected.evidence, "")
+        self.assertEqual(rejected.reason, "empty_evidence")
+
     def test_valid_and_invalid_entries_are_partitioned_independently(self):
         extraction = parse_review_extraction(
             '{"likes":[{"value":"lightweight","evidence":"light weight"}],'
@@ -137,14 +156,14 @@ class ReviewExtractorTests(unittest.TestCase):
                 '{"likes":[],"dislikes":[],"features":[]}'
             )
 
-    def test_parser_rejects_malformed_entry_objects(self):
+    def test_parser_rejects_malformed_entry_objects_and_nonstring_evidence(self):
         with self.assertRaises(ValueError):
             parse_review_extraction(
                 '{"likes":[{"value":"x"}],"dislikes":[],"key_features":[]}'
             )
         with self.assertRaises(ValueError):
             parse_review_extraction(
-                '{"likes":[{"value":"x","evidence":"   "}],'
+                '{"likes":[{"value":"x","evidence":1}],'
                 '"dislikes":[],"key_features":[]}'
             )
 
