@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN after a clean 134/134 full run. Phase 5 PURE Recommender pilot v1 is implemented and ready.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender pilot v1 PASS; full 94-session evaluation is ready.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -88,43 +88,55 @@ Final full run:
 
 Detailed record: `docs/PHASE4_PROFILE_UPDATER_FINAL_RESULTS.md`.
 
-For a recommendation target at purchase position `t`, Phase 5 may use only the profile state after interaction position `t-1`.
+For a recommendation target at purchase position `t`, Phase 5 uses only the profile state after interaction position `t-1`.
 
-## Phase 5 PURE Recommender — PILOT V1 READY
-Paper Algorithm 1 defines the recommender as using the updated profile, purchased items, and next-purchase candidates. The paper's published prompt is:
+## Phase 5 PURE Recommender
+Paper Algorithm 1 defines the recommender as using the updated profile, purchased items, and next-purchase candidates. The paper's published prompt exposes positive aspects, negative aspects, key features, and asks for a ranking of 20 candidates. The paper does not publish the exact serialization of purchased-item history.
 
-`Positive aspects: {likes} Negative aspects: {dislikes} Key Features: {key features} Based on these inputs, rank the {candidate list} from 1 to 20 by evaluating their likelihood of being purchased.`
+Reproduction serialization choice:
+- chronological purchased-item titles are prepended;
+- profile categories are serialized from the exact frozen Phase 4 state;
+- frozen candidates are shown as numbered titles 1..20;
+- ASINs remain hidden from the model;
+- structured JSON output must be a complete unique permutation of 1..20;
+- strict parser maps candidate numbers back to the frozen ASINs without semantic repair.
 
-The paper does not show the exact serialization of purchased-item history in that template. This reproduction therefore prepends chronological purchased-item titles, then uses the published profile labels and frozen numbered candidate list. This is an explicit reproduction serialization choice.
+### Pilot v1 — PASS
+- frozen sessions available: 94
+- requested/successful/failed: 6 / 6 / 0
+- users represented: 2
+- state alignment: exact `target_position - 1`
+- mean/max prompt tokens: 651.67 / 851
+- mean completion tokens: 72
+- total/mean latency: 11.709 s / 1.951 s
+- diagnostic NDCG@1/5/10/20: 0.000000 / 0.000000 / 0.119783 / 0.274854
+- status: PASS
 
-Phase 5 invariants:
-- target position `t` uses observed purchases `1..t-1`;
-- profile state must be exactly `(user_id, t-1)`;
-- frozen candidate set remains exactly 20 items;
-- ASINs are hidden from the LLM and numbered candidate titles are used;
-- structured JSON output requires a complete unique permutation of candidate numbers 1..20;
-- strict parser maps numbers back to frozen ASINs;
-- no malformed output, missing state, or future information is repaired silently.
+Pilot metrics are diagnostic only and must not be treated as the final PURE result. Detailed record: `docs/PHASE5_PURE_RECOMMENDER_PILOT_V1.md`.
 
-Pilot v1:
-- first 6 frozen sessions;
-- temperature 0.0;
-- seed 42;
-- max tokens 512;
-- output: `outputs/phase5_pure_recommender_pilot/`;
-- runner: `scripts/run_phase5_pure_recommender_safe.py`.
+## Phase 5 full 94-session evaluation — READY
+The accepted pilot protocol is unchanged. Only coverage changes from 6 sessions to all 94 frozen sessions.
 
-Pilot NDCG is diagnostic only. Full reported PURE metrics require all 94 frozen sessions with the same user-level aggregation policy.
+Files:
+- config: `config/phase5_pure_recommender_full.toml`
+- runner: `scripts/run_phase5_pure_recommender_full_safe.py`
+- output: `outputs/phase5_pure_recommender_final/`
 
-Protocol: `docs/PHASE5_PURE_RECOMMENDER_PROTOCOL.md`.
+Full-run requirements:
+- all 94 frozen sessions are attempted;
+- every session must map to the exact preceding frozen profile state;
+- candidate count remains 20 with the frozen candidate order;
+- invalid/malformed sessions are logged and excluded from metrics; any failure makes the run INCOMPLETE;
+- final NDCG is aggregated within user first, then averaged across users, matching the existing evaluation implementation;
+- temperature 0.0, seed 42, max tokens 512, structured ranking schema, and finalized runtime remain unchanged.
 
 ## Next actions
 1. Keep LM Studio on finalized 512 / 256 / 1 and Context Length 8192.
-2. Pull the branch and run the unit tests.
-3. Run `python scripts/run_phase5_pure_recommender_safe.py`.
-4. Review 6/6 state alignment, ranking validity, prompt size, and pilot NDCG.
-5. If the pilot passes, switch Phase 5 to all 94 frozen sessions and freeze the final PURE result.
-6. Rerun Sequential, Recency, and ICL comparison methods under the finalized runtime/output protocol for the final thesis comparison table.
+2. Pull the branch and run unit tests.
+3. Run `python scripts/run_phase5_pure_recommender_full_safe.py`.
+4. Read the compact handoff summary.
+5. If 94/94 succeeds, freeze the final PURE result.
+6. Rerun Sequential, Recency, and ICL under the finalized generation/runtime protocol for the final thesis comparison table.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
