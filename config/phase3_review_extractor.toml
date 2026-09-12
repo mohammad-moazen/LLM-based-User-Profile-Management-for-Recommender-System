@@ -3,15 +3,15 @@
 # The extractor is incremental: each canonical review is processed only after
 # that purchase has become observable in the continuous recommendation stream.
 #
-# Pilot v3 adds mechanical verbatim-review grounding validation after v2 still
-# showed title-derived key features. Earlier pilot artifacts remain untouched.
+# Pilot v4 separates model interpretation from exact review evidence. Earlier
+# pilot artifacts (v1-v3) remain untouched for auditability.
 
 [input]
 interactions_path = "outputs/phase1/interactions.jsonl.gz"
 sessions_path = "outputs/phase1/sessions.jsonl.gz"
 
 [experiment]
-# Validate the verbatim-grounded extractor on the same first 3 real reviews.
+# Validate the evidence-backed extractor on the same first 3 real reviews.
 # Use 0 later to process every unique review required by the 94 frozen sessions.
 max_extractions = 3
 resume = true
@@ -23,4 +23,4 @@ max_tokens = 512
 seed = 42
 
 [output]
-directory = "outputs/phase3_review_extractor_v3"
+directory = "outputs/phase3_review_extractor_v4"
