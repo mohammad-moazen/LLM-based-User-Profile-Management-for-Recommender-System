@@ -1,5 +1,73 @@
 {
-  "state": "READY",
-  "message": "Hybrid pilot v4 was reviewed: all 8/8 sessions produced valid final rankings. The historical INCOMPLETE label was caused only by an overly specific pilot acceptance counter. Full all-94 hybrid validation is ready.",
-  "next_expected_experiment": "phase5_pure_recommender_hybrid_full_v4"
+  "state": "RESULT",
+  "experiment": "phase5_pure_recommender_hybrid_full_v4",
+  "summary": {
+    "component": "PURE Recommender",
+    "experiment": "phase5_pure_recommender_hybrid_full_v4",
+    "run_version": "hybrid_full_v4",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "requested_sessions": 94,
+    "successful_sessions": 94,
+    "failed_sessions": 0,
+    "users_in_successful_sessions": 20,
+    "profile_state_alignment": "target_position_minus_one",
+    "output_protocol": {
+      "primary": "direct_complete_numbered_candidate_ranking",
+      "fallback_condition": "strict_direct_parser_failure_only",
+      "fallback": "fresh_candidate_rank_map_request",
+      "invalid_primary_shown_to_fallback": false,
+      "max_fallback_requests_per_session": 1,
+      "deterministic_post_generation_repair": false
+    },
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42
+    },
+    "protocol_counts": {
+      "direct_primary_successes": 93,
+      "fallback_attempts": 1,
+      "fallback_successes": 1
+    },
+    "ndcg": {
+      "1": 0.10425070028011205,
+      "5": 0.24355349242822116,
+      "10": 0.3183764185292945,
+      "20": 0.4160225252419735
+    },
+    "usage_totals_all_requests": {
+      "prompt_tokens": 101887,
+      "completion_tokens": 6938,
+      "total_tokens": 108825,
+      "request_count": 95,
+      "mean_prompt_tokens": 1072.4947368421053,
+      "max_prompt_tokens": 2801,
+      "mean_completion_tokens": 73.03157894736842
+    },
+    "latency": {
+      "total_request_seconds": 205.93494850002025,
+      "mean_request_seconds": 2.1677363000002132,
+      "mean_session_seconds": 2.191032787233974,
+      "median_session_seconds": 2.0283708499991917
+    },
+    "status": "PASS"
+  },
+  "fallback_rows": [
+    {
+      "status": "ok",
+      "session_id": "A26C4UAI3IXYF:6",
+      "user_id": "A26C4UAI3IXYF",
+      "target_position": 6,
+      "protocol_used": "rankmap_fallback",
+      "direct_validation_error": "Ranking contains duplicate candidate numbers",
+      "target_rank": 9,
+      "direct_finish_reason": "stop",
+      "fallback_finish_reason": "stop",
+      "direct_latency_seconds": 1.8951161000004504,
+      "fallback_latency_seconds": 3.5801677999988897
+    }
+  ],
+  "errors": []
 }
