@@ -1,0 +1,23 @@
+# PURE Phase 5 full recommender evaluation.
+#
+# Uses exactly the same prompt, frozen candidate sets, frozen Phase 4 profile
+# states, generation parameters, and strict ranking parser as the accepted pilot.
+# The only experimental change is coverage: all 94 frozen sessions are run.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+profile_states_path = "outputs/phase4_profile_updater_final_v4/profile_states.jsonl"
+
+[experiment]
+max_sessions = 0
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase5_pure_recommender_final"
