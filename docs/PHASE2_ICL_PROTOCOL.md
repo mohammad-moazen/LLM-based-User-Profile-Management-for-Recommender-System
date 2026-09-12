@@ -40,12 +40,28 @@ The exact wording and numbered-candidate JSON serialization are explicit reprodu
 - NDCG cutoffs: 1, 5, 10, 20
 - aggregation: sessions within user first, then users
 
-## Pilot sequence
-1. Run the full unit-test suite.
-2. Run the first 3 frozen sessions using `config/phase2_icl.toml`.
-3. Confirm 3/3 valid complete rankings and inspect latency/token usage.
-4. If clean, switch to `max_sessions = 0`, `fail_fast = false`, and run all 94 frozen sessions.
-5. Freeze final ICL NDCG before moving to review-aware baselines/PURE components.
+## Real-data pilot result
+The first 3 frozen sessions completed successfully:
+- successful sessions: 3
+- failed sessions: 0
+- users represented: 2
+- NDCG@1: 0.000000
+- NDCG@5: 0.000000
+- NDCG@10: 0.000000
+- NDCG@20: 0.243320
+- total reported tokens: 2,159
+- mean latency: 1.439 seconds/session
+- status: PASS
+
+These values are retained only as a prompt/output validation pilot. Three sessions are too small for a substantive performance conclusion or comparison with the frozen Sequential and Recency-Focused baselines.
+
+## Full-run sequence
+The pilot gate is satisfied. Checked-in configuration now uses:
+- `max_sessions = 0` to request all 94 frozen sessions;
+- `resume = true` so the 3 successful pilot sessions are skipped;
+- `fail_fast = false` so one malformed response does not discard progress on other sessions.
+
+A full ICL result is frozen only when all 94 requested sessions have valid rankings and the final summary reports `PASS`.
 
 ## Relevant files
 - `config/phase2_icl.toml`
