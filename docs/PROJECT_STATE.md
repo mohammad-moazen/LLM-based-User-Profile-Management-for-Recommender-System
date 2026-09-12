@@ -7,9 +7,9 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are historical PASS / FROZEN. Runtime profile `512 / 256 / 1` is finalized after the larger-batch candidate was rejected. Phase 3 Review Extractor now needs one clean homogeneous 134-review rerun under the final prompt/schema/parser and finalized runtime before downstream Profile Updater work. Automatic Git handoff is active.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines are historical PASS / FROZEN. Runtime profile `512 / 256 / 1` is finalized. Phase 3 Review Extractor clean-final attempt 1 reached 133/134; the single failure was diagnosed as a long structured-output case. A new homogeneous all-134 rerun is now configured with `max_tokens=1024`. Automatic Git handoff is active.**
 
-The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`; LM Studio reports GGUF `Q8_0` quantization and ~3.84 GB model size. Results from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
+The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`; LM Studio reports GGUF `Q8_0` quantization and ~3.84 GB model size. Results are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
 ## Environment
 - Development: Python + VS Code
@@ -31,7 +31,7 @@ The active model is the local derivative model `llama-3.2-3b-instruct-uncensored
 - candidate seed: 42
 - candidate invariants: PASS
 
-The task is continuous next-item ranking: one ground-truth next item among 19 non-interacted negatives. NDCG is averaged across sessions within each user first, then across users. Preprocessing decisions are in `docs/PREPROCESSING_POLICY.md`.
+The task is continuous next-item ranking: one ground-truth next item among 19 non-interacted negatives. NDCG is averaged across sessions within each user first, then across users.
 
 ## Finalized local LLM/runtime profile
 - Context Length: 8192
@@ -49,127 +49,99 @@ The task is continuous next-item ranking: one ground-truth next item among 19 no
 - Flash Attention: ON
 - K/V Cache Quantization: OFF
 
-The 100-request host-memory stability test passed. Post-warm-up private RAM was 4.760 GB and final private RAM 4.761 GB; no sustained host-RAM growth was observed. Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
+100-request host-memory stability: PASS. The larger `1024 / 512 / 1` batch candidate was rejected because it was slower, used more RAM, and changed 2/12 sampled profile-safe outputs.
 
-Important generation note: the Python API explicitly sends `temperature = 0.0` and `seed = 42` for current Phase 3 work. The LM Studio Inference-tab temperature shown in the UI does not override those API request values.
+Important generation note: the Python API explicitly sends `temperature=0.0` and `seed=42`; LM Studio's Inference-tab temperature does not override those API values.
 
 ## Phase 2 purchased-item baselines — historical frozen results
-### Sequential
-- NDCG@1: 0.061667
-- NDCG@5: 0.182577
-- NDCG@10: 0.227799
-- NDCG@20: 0.366378
-- mean latency: 1.385 s/session
+- Sequential: NDCG@1/5/10/20 = 0.061667 / 0.182577 / 0.227799 / 0.366378
+- Recency-Focused: 0.078333 / 0.199726 / 0.239947 / 0.378652
+- ICL: 0.061667 / 0.186356 / 0.255724 / 0.371370
 
-### Recency-Focused
-- NDCG@1: 0.078333
-- NDCG@5: 0.199726
-- NDCG@10: 0.239947
-- NDCG@20: 0.378652
-- mean latency: 1.394 s/session
-
-### ICL
-- NDCG@1: 0.061667
-- NDCG@5: 0.186356
-- NDCG@10: 0.255724
-- NDCG@20: 0.371370
-- mean latency: 1.343 s/session
-
-Comparison: `docs/PHASE2_BASELINE_COMPARISON.md`.
+Before the final thesis comparison table, rerun compared methods under the finalized runtime/protocol rather than overwriting these historical records.
 
 ## Phase 3 Review Extractor
-Accepted scientific design:
+Accepted design:
 - one canonical incoming interaction per LLM call;
 - no future/target review leakage;
 - evidence-backed JSON schema with `likes`, `dislikes`, `key_features`;
 - audit-only normalized `value` plus review-grounded `evidence`;
 - entry-level conservative evidence filtering;
 - unsupported or blank evidence never enters profile-safe data;
-- exact schema/grounding validator are explicit project reproduction choices because the paper does not publish them.
+- exact schema/grounding validator are explicit reproduction choices because the paper does not publish them.
 
-### Historical development artifact — complete 134/134
-The existing `outputs/phase3_review_extractor_v5/` directory reached:
-- 134/134 successful tasks
-- 0 failed
-- accepted likes: 236
-- accepted dislikes: 97
-- accepted key features: 163
-- total accepted entries: 496
-- rejected unsupported/blank entries: 36
-- total reported tokens: 92,829
-- mean latency: 3.920 s/extraction
+### Historical development artifact
+`outputs/phase3_review_extractor_v5/` reached 134/134 after resume/retry but is retained only as a development/audit artifact because prompt/schema behavior changed during its construction.
 
-This artifact remains preserved for audit and documents the successful development path.
+### Clean-final attempt 1 — 133/134
+A new homogeneous run under the final prompt/schema/parser and finalized runtime used `max_tokens=512` in `outputs/phase3_review_extractor_final/`.
 
-### Homogeneity correction
-The first full run produced 131 successful rows under the pre-blank-evidence-fix prompt/schema. The blank-evidence patch then changed the active prompt/schema behavior and only the 3 failed tasks were regenerated via resume. Therefore the existing 134/134 directory is **not a homogeneous final-protocol run**, even though every stored profile-safe entry individually passed the accepted grounding validator.
+Result:
+- successful: 133/134
+- failed: 1
+- failed task: `A2BFIYZYNK54QX:12`
+- failure: malformed JSON model response
+- accepted likes: 233
+- accepted dislikes: 93
+- accepted key features: 149
+- rejected unsupported entries: 48
+- total reported tokens: 95,600
+- mean successful-request latency: 3.858 s
 
-Current-protocol repeatability testing showed 36/36 exact same-profile repeat pairs under `512 / 256 / 1`. Therefore the historical 8/12 mismatch against rerun outputs is protocol-history drift, not ordinary same-profile randomness.
+### Failed-task diagnostic
+The failed task was rerun with the identical model/prompt/schema/parser/seed/temperature/runtime and only `max_tokens` increased from 512 to 1024.
 
-A new clean output directory is now configured:
+Diagnostic result:
+- finish reason: `stop`
+- completion tokens: 495
+- prompt tokens: 1,298
+- total tokens: 1,793
+- latency: 15.766 s
+- parse status: PASS
+- rejected entries: 0
 
-`outputs/phase3_review_extractor_final/`
+Because the valid completion used 495 tokens, very close to the former 512-token ceiling, the 512 ceiling is considered too tight for the thesis-grade clean artifact. The exact backend budget mechanics are not claimed as proven.
 
-The first run in this directory will generate all 134 tasks from scratch under one final prompt/schema/parser and the finalized runtime profile. The historical v5 directory is not overwritten.
+Detailed diagnostic: `docs/PHASE3_FAILED_TASK_DIAGNOSTIC.md`.
 
-## Runtime optimization findings
-### Repeatability baseline — 512 / 256 / 1
-Three repeated passes over the same 12 tasks (36 measured requests) produced:
-- overall mean latency: 3.764 s
-- exact repeat pairs: 36/36 = 100%
-- mean/median/min pairwise Jaccard: 1.000 / 1.000 / 1.000
+### Clean-final attempt 2 — configured
+To preserve homogeneity, do **not** patch only the failed row with a different ceiling. Instead all 134 tasks will be regenerated from scratch with:
+- temperature: 0.0
+- seed: 42
+- max tokens: 1024
+- same final prompt/schema/parser
+- same finalized LM Studio runtime `512 / 256 / 1`
+- new output directory: `outputs/phase3_review_extractor_final_1024/`
 
-Detailed record: `docs/RUNTIME_REPEATABILITY_BASELINE.md`.
+The previous v5 and 133/134 directories remain preserved for audit. Freeze Phase 3 only if the new clean run reaches 134/134.
 
-### Fresh current-protocol reference — 512 / 256 / 1
-A fresh 12-task reference captured under the final extractor code produced:
-- mean latency: 3.837574 s
-- median latency: 3.400080 s
-- rejected entries: 4
-- total reported tokens: 8,271
-
-### Candidate 1024 / 512 / 1 — REJECTED
-Only Evaluation Batch and Physical Batch were increased. Result over the same 12 tasks:
-- exact profile matches vs fresh reference: 10/12
-- mean Jaccard: 0.909524
-- minimum Jaccard: 0.2
-- candidate mean latency: 4.024559 s
-- reference mean latency: 3.837574 s
-- speedup: 0.9535x, i.e. candidate was about 4.9% slower
-- candidate private-RAM delta: +0.710 GB
-- candidate working-set delta: +0.706 GB
-
-Decision: **reject 1024 / 512 / 1**. It is slower, uses more memory, and changed profile-safe outputs for 2/12 sampled tasks. The project therefore finalizes `512 / 256 / 1` for the clean homogeneous extractor run and subsequent thesis-grade experiments. Detailed record: `docs/RUNTIME_PROFILE_CANDIDATE_1024_512_1.md`.
+## Runtime findings
+- same-profile repeatability under `512 / 256 / 1`: 36/36 exact pairs, Jaccard 1.0
+- fresh current-protocol 12-task reference mean latency: 3.838 s
+- `1024 / 512 / 1` batch candidate mean latency: 4.025 s, exact matches 10/12, private RAM delta +0.710 GB — REJECTED
 
 ## Automatic experiment handoff
-`handoff/latest.json` is a compact mailbox. Runners commit/push only this path, never README or unrelated local changes. Durable findings are moved into docs and the mailbox is reset between steps.
-
-## Reproducibility note for final comparisons
-The Phase 2 baseline scores are retained as historical frozen results. Before the final thesis comparison table, rerun compared methods under the finalized runtime profile and final protocol versions rather than overwriting historical records.
+`handoff/latest.json` is a compact mailbox. Runners commit/push only this path, never README or unrelated local changes.
 
 ## Current implementation status
 Completed:
 - Phase 1 preprocessing/session/candidate freeze
 - local inference infrastructure and RAM stability validation
-- Sequential, Recency-Focused, ICL historical baseline freezes
-- Review Extractor implementation, grounding policy, pilots v1-v5
-- historical 134/134 Review Extractor completion
-- deterministic current-profile repeatability characterization
-- automatic Git handoff and traceback wrappers
-- current-protocol runtime reference capture/compare tool
-- 1024/512/1 runtime candidate benchmark and rejection
-- final runtime profile selection: 512/256/1
-- clean final extractor output directory configured
+- historical Sequential, Recency-Focused, ICL baselines
+- Review Extractor implementation and grounding policy
+- pilots v1-v5 and historical 134/134 development artifact
+- deterministic repeatability characterization
+- runtime profile benchmark and final selection `512 / 256 / 1`
+- clean-final attempt 1 (133/134)
+- failed-task 1024-token diagnostic PASS
+- clean homogeneous 1024-token final rerun configured
 
 ## Next actions
-1. In LM Studio, restore Evaluation Batch Size to 512 and Physical Batch Size to 256; keep Max Concurrent Predictions at 1 and all other finalized settings unchanged.
-2. Unload/reload the model so the restored loader profile is definitely active.
-3. Pull the repository and run `python scripts/run_phase3_review_extractor_safe.py`.
-4. Because the configured output directory is new, all 134 required reviews will be generated from scratch under one homogeneous final protocol/runtime.
-5. Review the handoff; if 134/134 succeeds, freeze this homogeneous final Review Extractor artifact.
-6. Implement and pilot Profile Updater chronologically with no future leakage.
-7. Implement PURE recommender and evaluate on the frozen 94 sessions.
-8. Rerun final compared baselines under the finalized runtime/protocol before the thesis comparison table.
+1. Keep LM Studio on finalized `Evaluation Batch 512 / Physical Batch 256 / Max Concurrent 1` settings.
+2. Pull the repository.
+3. Run `python scripts/run_phase3_review_extractor_safe.py`.
+4. The new output directory is empty, so all 134 tasks run from scratch with `max_tokens=1024`.
+5. If 134/134 passes, freeze the homogeneous Review Extractor artifact and proceed to Profile Updater.
 
 ## Working rule
 This file is the authoritative current snapshot. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
