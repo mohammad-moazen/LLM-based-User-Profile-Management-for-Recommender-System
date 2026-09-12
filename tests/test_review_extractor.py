@@ -29,7 +29,7 @@ class ReviewExtractorTests(unittest.TestCase):
             "timestamp": 123456789,
         }
 
-    def test_prompt_contains_paper_relevant_review_context_and_strict_grounding_rules(self):
+    def test_prompt_contains_review_context_and_evidence_rules(self):
         messages = build_review_extractor_messages(self.interaction)
         prompt = messages[1]["content"]
         system_prompt = messages[0]["content"]
@@ -39,69 +39,75 @@ class ReviewExtractorTests(unittest.TestCase):
         self.assertIn("light weight and precise sensor", prompt)
         self.assertIn("likes/dislikes/key features", prompt)
         self.assertIn("REVIEW TEXT between the markers is the only evidence source", prompt)
-        self.assertIn("VERBATIM QUOTE", prompt)
-        self.assertIn("Never copy a feature merely because it appears in the product name", prompt)
-        self.assertIn("Never invent a preference from the numeric rating", prompt)
-        self.assertIn("NEVER evidence", system_prompt)
-        self.assertIn("verbatim quote", system_prompt)
+        self.assertIn("value may be a concise paraphrase", prompt)
+        self.assertIn("evidence MUST be a short contiguous VERBATIM quote", prompt)
+        self.assertIn("never use a title-only attribute as evidence", prompt)
+        self.assertIn("never independent evidence", system_prompt)
         self.assertNotIn("123456789", prompt)
         self.assertNotIn("u1", prompt)
 
-    def test_response_format_uses_three_required_arrays(self):
+    def test_response_format_uses_three_required_evidence_arrays(self):
         response_format = review_extractor_response_format()
         self.assertEqual(response_format["type"], "json_schema")
         schema = response_format["json_schema"]["schema"]
-        self.assertEqual(
-            set(schema["properties"]),
-            {"likes", "dislikes", "key_features"},
-        )
-        self.assertEqual(
-            set(schema["required"]),
-            {"likes", "dislikes", "key_features"},
-        )
+        self.assertEqual(set(schema["properties"]), {"likes", "dislikes", "key_features"})
+        self.assertEqual(set(schema["required"]), {"likes", "dislikes", "key_features"})
+        item_schema = schema["properties"]["likes"]["items"]
+        self.assertEqual(set(item_schema["properties"]), {"value", "evidence"})
+        self.assertEqual(set(item_schema["required"]), {"value", "evidence"})
+        self.assertFalse(item_schema["additionalProperties"])
         self.assertFalse(schema["additionalProperties"])
 
-    def test_parser_accepts_complete_structured_output(self):
+    def test_parser_accepts_paraphrase_with_verbatim_evidence(self):
         extraction = parse_review_extraction(
-            '{"likes":["light weight"],'
-            '"dislikes":["cable feels stiff"],'
-            '"key_features":["precise sensor"]}',
+            '{"likes":[{"value":"lightweight mouse","evidence":"light weight"}],'
+            '"dislikes":[{"value":"stiff cable","evidence":"cable feels stiff"}],'
+            '"key_features":[{"value":"precise sensor","evidence":"precise sensor"}]}',
             source_review=self.interaction["review_text"],
         )
-        self.assertEqual(extraction.likes, ("light weight",))
-        self.assertEqual(extraction.dislikes, ("cable feels stiff",))
-        self.assertEqual(extraction.key_features, ("precise sensor",))
+        self.assertEqual(extraction.to_profile_dict()["likes"], ["light weight"])
+        self.assertEqual(extraction.to_profile_dict()["dislikes"], ["cable feels stiff"])
+        self.assertEqual(extraction.to_profile_dict()["key_features"], ["precise sensor"])
+        self.assertEqual(
+            extraction.to_audit_dict()["likes"][0],
+            {"value": "lightweight mouse", "evidence": "light weight"},
+        )
 
-    def test_grounding_validation_is_case_and_whitespace_tolerant(self):
+    def test_evidence_validation_is_case_and_whitespace_tolerant(self):
         extraction = parse_review_extraction(
-            '{"likes":["LIGHT   WEIGHT"],"dislikes":[],"key_features":[]}',
+            '{"likes":[{"value":"lightweight","evidence":"LIGHT   WEIGHT"}],'
+            '"dislikes":[],"key_features":[]}',
             source_review=self.interaction["review_text"],
         )
-        self.assertEqual(extraction.likes, ("LIGHT   WEIGHT",))
+        self.assertEqual(extraction.to_profile_dict()["likes"], ["LIGHT   WEIGHT"])
 
-    def test_parser_rejects_title_only_feature_when_source_review_is_supplied(self):
-        with self.assertRaisesRegex(ValueError, "non-verbatim or non-review-grounded"):
+    def test_parser_rejects_title_only_nonreview_evidence(self):
+        with self.assertRaisesRegex(ValueError, "non-verbatim review evidence"):
             parse_review_extraction(
-                '{"likes":[],"dislikes":[],"key_features":["RGB Wired"]}',
+                '{"likes":[],"dislikes":[],"key_features":['
+                '{"value":"RGB wired","evidence":"RGB Wired"}]}',
                 source_review=self.interaction["review_text"],
             )
 
-    def test_parser_rejects_paraphrase_when_source_review_is_supplied(self):
-        with self.assertRaisesRegex(ValueError, "non-verbatim or non-review-grounded"):
-            parse_review_extraction(
-                '{"likes":["lightweight mouse"],"dislikes":[],"key_features":[]}',
-                source_review=self.interaction["review_text"],
-            )
-
-    def test_parser_preserves_duplicate_entries_for_later_updater(self):
+    def test_parser_accepts_normalized_value_when_evidence_is_grounded(self):
         extraction = parse_review_extraction(
-            '{"likes":["precise sensor","precise sensor"],'
+            '{"likes":[{"value":"precise sensing","evidence":"precise sensor"}],'
+            '"dislikes":[],"key_features":[]}',
+            source_review=self.interaction["review_text"],
+        )
+        self.assertEqual(extraction.to_profile_dict()["likes"], ["precise sensor"])
+
+    def test_parser_preserves_duplicate_evidence_for_later_updater(self):
+        extraction = parse_review_extraction(
+            '{"likes":['
+            '{"value":"precise sensor","evidence":"precise sensor"},'
+            '{"value":"accurate sensor","evidence":"precise sensor"}],'
             '"dislikes":[],"key_features":[]}',
             source_review=self.interaction["review_text"],
         )
         self.assertEqual(
-            extraction.likes,
-            ("precise sensor", "precise sensor"),
+            extraction.to_profile_dict()["likes"],
+            ["precise sensor", "precise sensor"],
         )
 
     def test_parser_rejects_wrong_keys_without_repair(self):
@@ -110,14 +116,15 @@ class ReviewExtractorTests(unittest.TestCase):
                 '{"likes":[],"dislikes":[],"features":[]}'
             )
 
-    def test_parser_rejects_non_string_or_blank_entries(self):
+    def test_parser_rejects_malformed_entry_objects(self):
         with self.assertRaises(ValueError):
             parse_review_extraction(
-                '{"likes":[1],"dislikes":[],"key_features":[]}'
+                '{"likes":[{"value":"x"}],"dislikes":[],"key_features":[]}'
             )
         with self.assertRaises(ValueError):
             parse_review_extraction(
-                '{"likes":["   "],"dislikes":[],"key_features":[]}'
+                '{"likes":[{"value":"x","evidence":"   "}],'
+                '"dislikes":[],"key_features":[]}'
             )
 
 
