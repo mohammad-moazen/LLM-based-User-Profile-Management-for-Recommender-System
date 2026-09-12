@@ -20,6 +20,11 @@ from .recommender import (
     build_pure_recommender_messages,
     pure_recommender_response_format,
 )
+from .recommender_rankmap import (
+    build_pure_recommender_rankmap_messages,
+    parse_candidate_rankmap,
+    pure_recommender_rankmap_response_format,
+)
 from .recommender_scores import (
     SCORE_MAX,
     SCORE_MIN,
@@ -49,16 +54,19 @@ __all__ = [
     "build_profile_id_map",
     "build_profile_updater_messages",
     "build_pure_recommender_messages",
+    "build_pure_recommender_rankmap_messages",
     "build_pure_recommender_score_messages",
     "build_review_extractor_messages",
     "concatenate_profile_and_extraction",
     "is_clear_lexical_overlap",
     "is_more_informative_overlap",
+    "parse_candidate_rankmap",
     "parse_candidate_scores",
     "parse_profile_update",
     "parse_review_extraction",
     "profile_from_mapping",
     "profile_updater_response_format",
+    "pure_recommender_rankmap_response_format",
     "pure_recommender_response_format",
     "pure_recommender_score_response_format",
     "review_extractor_response_format",
