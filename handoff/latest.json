@@ -1,5 +1,40 @@
 {
-  "state": "READY",
-  "message": "Failed-task diagnostic reviewed. Clean homogeneous Phase 3 final rerun is configured with max_tokens=1024 in a new output directory.",
-  "next_expected_experiment": "phase3_review_extractor_final_1024"
+  "state": "RESULT",
+  "experiment": "phase3_review_extractor",
+  "summary": {
+    "component": "Review Extractor",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "required_unique_extractions": 134,
+    "requested_extractions": 134,
+    "successful_extractions": 134,
+    "failed_extractions": 0,
+    "users_in_successful_extractions": 20,
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 1024,
+      "seed": 42,
+      "structured_output": "evidence_backed_json_schema",
+      "grounding_validation": "entry_level_verbatim_evidence_filter"
+    },
+    "extracted_entry_counts": {
+      "likes": 240,
+      "dislikes": 98,
+      "key_features": 152
+    },
+    "rejected_unsupported_entries": 45,
+    "usage_totals": {
+      "prompt_tokens": 74956,
+      "completion_tokens": 22394,
+      "total_tokens": 97350
+    },
+    "latency": {
+      "total_seconds": 724.6502214999709,
+      "mean_seconds": 5.40783747388038
+    },
+    "status": "PASS"
+  },
+  "pilot_rows": [],
+  "errors": []
 }
