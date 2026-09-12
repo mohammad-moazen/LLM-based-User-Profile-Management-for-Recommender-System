@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 direct-ranking pilot v1 PASS, but full attempt 1 is INCOMPLETE at 92/94. A same-seed formatting-only retry failed 0/2, so direct-permutation recovery is rejected and a score-based serialization pilot v2 is ready.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 still requires a final output serialization: direct ranking failed on 2/94, same-seed corrective retry failed 0/2, scored pilot v2 passed structurally 8/8 but is rejected for final use because severe score ties made candidate-order tie-breaking dominate much of the ranking. Rank-map pilot v3 is READY.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -30,18 +30,17 @@ Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3
 - KV Cache GPU Offload ON
 - Flash Attention ON
 - K/V cache quantization OFF
-- current Phase 3/4/5 API requests explicitly send temperature 0.0 and seed 42
+- current Phase 3/4/5 API experiments explicitly send temperature 0.0 and seed 42
 
 ## Phase 2 historical purchased-item baselines
 - Sequential NDCG@1/5/10/20: 0.061667 / 0.182577 / 0.227799 / 0.366378
 - Recency-Focused: 0.078333 / 0.199726 / 0.239947 / 0.378652
 - ICL: 0.061667 / 0.186356 / 0.255724 / 0.371370
 
-These remain historical records. Final thesis comparison must rerun compared methods under the finalized runtime and the final adopted output protocol rather than overwrite the historical artifacts.
+These remain historical records. Final thesis comparison must rerun compared methods under the finalized runtime and final adopted output protocol rather than overwrite historical artifacts.
 
 ## Phase 3 Review Extractor — PASS / FROZEN
-Official downstream source:
-`outputs/phase3_review_extractor_final_1024/`
+Official source: `outputs/phase3_review_extractor_final_1024/`
 
 Final homogeneous run:
 - required/successful/failed: 134 / 134 / 0
@@ -53,146 +52,110 @@ Final homogeneous run:
 - mean latency: 5.408 s
 - temperature 0.0, seed 42, max output tokens 1024
 
-Only accepted profile-safe `extraction` strings feed Phase 4.
-
 ## Phase 4 Profile Updater — PASS / FROZEN
-Official state artifact:
-`outputs/phase4_profile_updater_final_v4/profile_states.jsonl`
+Official state artifact: `outputs/phase4_profile_updater_final_v4/profile_states.jsonl`
 
 Frozen policy:
 - profile starts empty per user;
 - chronological/no-future-leakage updates;
-- stable same-category IDs (`L...`, `D...`, `K...`);
-- model returns IDs only and cannot rewrite evidence;
+- model returns stable same-category evidence IDs only;
 - deterministic information-preserving dominance guard restores unsupported omissions;
 - exact duplicates may collapse;
-- overlap removal is allowed only when another same-category entry is strictly richer under the conservative lexical rule;
-- unresolved semantic conflicts are preserved rather than silently deleted.
+- overlap removal is allowed only when a same-category entry is strictly richer under the conservative lexical rule;
+- unresolved semantic conflicts are preserved.
 
 Final full run:
 - users: 20
 - expected/successful/failed updates: 134 / 134 / 0
-- prefix contiguity invariant: PASS
-- guard-restored entries: 619
-- guard-allowed removals: 11
-- cumulative raw/safe prefix entries: 2,925 / 2,849
-- cumulative entry-count compaction: 2.598%
+- prefix contiguity: PASS
+- guard restored/allowed removals: 619 / 11
 - final raw/safe entries: 472 / 461
 - final entry-count compaction: 2.331%
 - prompt/completion/total tokens: 146,320 / 15,137 / 161,457
-- maximum updater prompt: 4,287 tokens at `A3RQZ1J5F5G104:19`
-- total latency: 408.766 s
-- mean latency: 3.050 s/update
-- median latency: 1.728 s/update
+- maximum updater prompt: 4,287 tokens
+- mean/median latency: 3.050 / 1.728 s
 - status: PASS / FROZEN
 
-Detailed record: `docs/PHASE4_PROFILE_UPDATER_FINAL_RESULTS.md`.
-
-For a recommendation target at purchase position `t`, Phase 5 uses only the profile state after interaction position `t-1`.
+For recommendation target position `t`, Phase 5 uses only profile state `(user_id, t-1)`.
 
 ## Phase 5 PURE Recommender
-Paper Algorithm 1 defines the recommender as using the updated profile, purchased items, and next-purchase candidates. The paper's published prompt exposes positive aspects, negative aspects, key features, and asks for a ranking of 20 candidates. The paper does not publish the exact machine-readable output schema or purchased-item serialization.
+Paper behavior is preserved: updated profile + purchased items + 20 next-purchase candidates. The paper does not publish an exact machine-readable output schema or exact purchased-item serialization.
 
-Shared reproduction choices retained across Phase 5 protocols:
+Shared reproduction choices across all Phase 5 output protocols:
 - chronological purchased-item titles are prepended;
-- profile categories are serialized from the exact frozen Phase 4 state;
-- frozen candidates are shown as numbered titles 1..20;
-- ASINs remain hidden from the model;
-- target position `t` uses profile state exactly `(user_id, t-1)`;
-- no future review or target marker is shown;
-- temperature 0.0, seed 42, max tokens 512, and finalized runtime remain fixed.
+- profile categories come from the exact frozen Phase 4 state;
+- frozen candidates are numbered 1..20 using titles; ASINs are hidden from the model;
+- no target marker or future review is shown;
+- temperature 0.0, seed 42, max tokens 512, and finalized runtime remain fixed;
+- malformed model output is never silently repaired.
 
 ### Direct-ranking pilot v1 — PASS
-- frozen sessions available: 94
-- requested/successful/failed: 6 / 6 / 0
-- users represented: 2
-- state alignment: exact `target_position - 1`
-- mean/max prompt tokens: 651.67 / 851
-- mean completion tokens: 72
-- total/mean latency: 11.709 s / 1.951 s
-- diagnostic NDCG@1/5/10/20: 0.000000 / 0.000000 / 0.119783 / 0.274854
-- status: PASS
-
-Pilot metrics are diagnostic only. Detailed record: `docs/PHASE5_PURE_RECOMMENDER_PILOT_V1.md`.
+6/6 pilot sessions succeeded. This established prompt/state alignment and ranking evaluation plumbing.
 
 ### Direct-ranking full attempt 1 — INCOMPLETE
-- requested sessions: 94
-- successful sessions: 92
-- failed sessions: 2
-- users represented among successful sessions: 20
-- prompt tokens: 98,825 total; 1,074.185 mean; 2,801 max
-- completion tokens: 6,639 total; 72.163 mean
-- latency: 196.672 s total; 2.138 s mean
+- requested/successful/failed: 94 / 92 / 2
 - provisional 92-session NDCG@1/5/10/20: 0.104435 / 0.247248 / 0.318287 / 0.416851
-- status: INCOMPLETE
+- failed sessions: `A3RQZ1J5F5G104:10`, `A26C4UAI3IXYF:6`
+- both malformed outputs repeated candidate 20 and omitted another candidate despite `uniqueItems` in the requested schema.
 
-The provisional NDCG values are not final because two sessions are absent.
-
-Failed sessions:
-- `A3RQZ1J5F5G104:10`
-- `A26C4UAI3IXYF:6`
-
-Both responses contained 20 numbers but duplicated candidate 20 and omitted another candidate. The local serving backend therefore did not fully enforce the requested JSON Schema `uniqueItems` property. The strict parser rejected both responses, and no malformed output entered evaluation.
-
-Detailed record: `docs/PHASE5_PURE_RECOMMENDER_FULL_ATTEMPT1.md`.
+The provisional metrics are not final.
 
 ### Formatting-only corrective retry — REJECTED
-The diagnostic tested one corrective retry for each failed row with the same frozen inputs, model, temperature, seed, token cap, and direct-ranking schema. The previous malformed response was supplied and the model was asked only to correct the permutation format.
+Same model, prompt context, temperature, seed, token cap, and ranking schema were used, with the previous malformed response shown back to the model and only a format correction requested.
+
+Result: 0/2 successful. Both malformed rankings were reproduced exactly enough to fail the same strict parser rule. Deterministic same-seed retry is rejected as a recovery policy.
+
+### Scored-output pilot v2 — TECHNICAL PASS / FINAL POLICY REJECTED
+Coverage: original six pilot sessions + both known direct-ranking failures = 8 sessions.
 
 Result:
-- rows tested: 2
-- successful retries: 0
-- failed retries: 2
-- deterministic post-generation repair: none
-- status: INCOMPLETE / retry policy rejected
+- requested/successful/failed: 8 / 8 / 0
+- known direct failures recovered structurally: 2 / 2
+- diagnostic NDCG@1/5/10/20: 0.000000 / 0.265402 / 0.265402 / 0.390355
+- mean/max prompt tokens: 883.875 / 1,658
+- mean completion tokens: 156.625
+- mean latency: 3.849 s
 
-For both sessions the retry reproduced the same malformed ranking. Repeating the same deterministic retry policy is therefore not accepted as a recovery mechanism.
+Tie audit:
+- sessions with score ties: 8 / 8
+- total tie groups: 12
+- candidates participating in tied groups: 152
+- several sessions tied 19 or all 20 candidates.
 
-Detailed record: `docs/PHASE5_MALFORMED_RANKING_RETRY_DIAGNOSTIC.md`.
+Therefore frozen candidate-number tie-breaking determined too much of the final ordering. The scored protocol is useful as a structural diagnostic but is not accepted as the thesis-grade ranking protocol.
 
-## Phase 5 scored-output pilot v2 — READY
-The recommendation objective and frozen inputs remain unchanged. Only machine-readable output serialization changes.
+Detailed record: `docs/PHASE5_PURE_RECOMMENDER_SCORED_PILOT_V2.md`.
+
+## Phase 5 rank-map pilot v3 — READY
+Goal: keep the model's task explicitly as ranking while avoiding the backend's problematic unique ranking-array constraint and avoiding score ties.
 
 Protocol:
-- the model emits one integer purchase-likelihood score in `[0, 1000]` for every candidate number 1..20;
-- the JSON schema requires all 20 candidate-number keys explicitly and forbids missing/extra keys;
-- ranking is derived by descending model score;
-- exact score ties are broken by frozen candidate number ascending;
-- the frozen candidate order was already randomized in Phase 1, so this tie rule is deterministic and does not use target information;
-- no candidate score is inserted, inferred, rewritten, or repaired after generation;
-- this is an explicit reproduction engineering choice because the paper does not publish an output schema.
+- JSON contains one required candidate-number key for every candidate 1..20;
+- each candidate receives an explicit integer rank position 1..20;
+- strict parser requires the set of rank values to be exactly `{1,...,20}`;
+- duplicate or missing rank values fail the session;
+- no score tie-break exists;
+- no deterministic candidate insertion/deletion/reordering repair exists;
+- this remains an explicit reproduction output-serialization choice because the paper does not publish its schema.
 
-Pilot coverage:
-- original six successful Phase 5 pilot sessions;
-- both direct-ranking full-run failures;
-- 8 sessions total.
+Pilot coverage is the same diagnostic 8-session set used by scored pilot v2, including both known direct-ranking failures.
 
 Files:
-- implementation: `src/pure_recommender/pure/recommender_scores.py`
-- config: `config/phase5_pure_recommender_scored_pilot.toml`
-- runner: `scripts/run_phase5_pure_recommender_scored_pilot.py`
-- safe wrapper: `scripts/run_phase5_pure_recommender_scored_pilot_safe.py`
-- tests: `tests/test_pure_recommender_scores.py`
-- output: `outputs/phase5_pure_recommender_scored_pilot_v2/`
+- implementation: `src/pure_recommender/pure/recommender_rankmap.py`
+- config: `config/phase5_pure_recommender_rankmap_pilot.toml`
+- runner: `scripts/run_phase5_pure_recommender_rankmap_pilot.py`
+- safe wrapper: `scripts/run_phase5_pure_recommender_rankmap_pilot_safe.py`
+- tests: `tests/test_pure_recommender_rankmap.py`
+- output: `outputs/phase5_pure_recommender_rankmap_pilot_v3/`
 
 Acceptance criteria:
 - 8/8 sessions successful;
-- both known direct-ranking failure sessions successful;
-- all responses contain exactly 20 required score keys;
-- derived ranking is a complete 20-candidate permutation;
-- tie frequency is recorded for audit;
-- no post-generation semantic or structural repair is used.
+- both known direct-ranking failures successful;
+- every response contains all 20 candidate keys;
+- rank values form an exact 1..20 permutation;
+- no retry, tie-break, or post-generation repair is used.
 
-If this pilot passes, all 94 sessions will be rerun from scratch under the scored protocol. Only that homogeneous 94/94 run can become the final PURE metric artifact. The comparison baselines will then be rerun with the same final output serialization for the thesis table.
-
-## Next actions
-1. Keep LM Studio on finalized 512 / 256 / 1 and Context Length 8192.
-2. Pull the branch and run unit tests.
-3. Run `python scripts/run_phase5_pure_recommender_scored_pilot_safe.py`.
-4. Inspect all 8 results, especially the two known direct-ranking failures and score ties.
-5. If 8/8 passes, prepare a clean 94-session scored-output evaluation.
-6. Freeze PURE only after the clean final 94/94 evaluation passes.
-7. Rerun Sequential, Recency, and ICL under the same final generation/runtime/output policy for the final thesis comparison table.
+If the rank-map pilot passes, prepare a new clean all-94 run from scratch under this one homogeneous protocol. Freeze PURE only after a clean 94/94 result. Then rerun Sequential, Recency, and ICL with the same final output serialization for the thesis comparison table.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
