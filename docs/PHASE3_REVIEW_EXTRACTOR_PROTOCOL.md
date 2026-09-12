@@ -38,21 +38,22 @@ Rules:
 - downstream profile input uses only validated review evidence strings;
 - redundancy/conflict handling remains the responsibility of Profile Updater.
 
-## Accepted v5 grounding policy: entry-level conservative filtering
-Pilot v4 demonstrated that one unsupported evidence item should not discard other valid review-grounded entries from the same otherwise-usable response.
-
+## Accepted grounding policy: entry-level conservative filtering
 The accepted v5 policy validates each generated entry independently:
 
 1. structural/schema violations fail the entire response;
-2. each `evidence` string is checked against the canonical review after case/whitespace normalization;
+2. non-empty `evidence` strings are checked against the canonical review after case/whitespace normalization;
 3. grounded entries are accepted unchanged;
 4. unsupported entries are rejected individually and logged with field, value, evidence, and reason;
-5. rejected entries are never rewritten, inferred, replaced, or silently moved to another category;
-6. only accepted evidence can enter the downstream-safe profile representation.
+5. blank evidence is rejected individually with reason `empty_evidence`;
+6. rejected entries are never rewritten, inferred, replaced, or silently moved to another category;
+7. only accepted evidence can enter the downstream-safe profile representation.
+
+The JSON schema now asks for non-empty `value` and `evidence` strings (`minLength = 1`), and the prompt explicitly instructs the model to omit unsupported entries instead of returning blank evidence. The local validator still treats any blank evidence that slips through as rejected profile data rather than a response-level failure.
 
 This is conservative filtering rather than semantic repair. It is an explicit reproduction engineering choice for the active local derivative model because the paper does not publish an exact grounding validator.
 
-A known limitation is that the audit-only `value` can occasionally be broader or less precisely aligned with its selected evidence span. Because `value` is **not** used for profile construction, this cannot inject unsupported content into the downstream-safe profile. Some accepted evidence spans may also be longer than ideal or overlap categories; Profile Updater is responsible for later consolidation.
+A known limitation is that the audit-only `value` can occasionally be broader or less precisely aligned with its selected evidence span. Because `value` is not used for profile construction, this cannot inject unsupported content into the downstream-safe profile. Some accepted evidence spans may also be longer than ideal or overlap categories; Profile Updater is responsible for later consolidation.
 
 ## Frozen experimental basis
 - Dataset: Amazon Review Data 2018 / Video Games 5-core
@@ -91,21 +92,32 @@ The same three reviews were processed successfully with the entry-level conserva
 - 1,898 total reported tokens;
 - 3.999 seconds mean latency.
 
-The rejected entry was the title-derived `backlit` claim from Review 2. It was logged and excluded while the three grounded entries from that same response were preserved. No unsupported evidence entered the downstream-safe extraction.
+The rejected entry was the title-derived `backlit` claim from Review 2. It was logged and excluded while the grounded entries from the same response were preserved. No unsupported evidence entered the downstream-safe extraction.
 
 Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`.
 
-## Full extraction run
-Pilot v5 is accepted. The checked-in configuration now enables all 134 required historical review extractions using the exact same v5 policy:
+## Full extraction run — attempt 1
+The accepted v5 policy was run across all 134 required unique historical reviews.
 
-- `max_extractions = 0`
-- `resume = true`
-- `fail_fast = false`
-- output directory: `outputs/phase3_review_extractor_v5/`
+Result:
+- successful extractions: 131
+- failed extractions: 3
+- accepted likes: 224
+- accepted dislikes: 95
+- accepted key features: 156
+- unsupported generated entries rejected safely: 34
+- total reported tokens: 90,055
+- mean successful-request latency: 3.848 seconds
+- total successful-request latency: 504.068 seconds (~8.40 minutes)
+- status: INCOMPLETE
 
-Because the first three accepted tasks already exist locally in that directory, resume should skip them and process the remaining 131. Any task-level failures are retained and can be retried with the same resume mechanism.
+All three failures had the same cause: a generated `key_features` entry had `evidence: ""`. The parser previously treated blank evidence as a response-level validation error before entry-level filtering could run. The retry patch now rejects a blank-evidence entry individually with reason `empty_evidence`, preserving other grounded entries in that response.
 
-The Review Extractor is not considered fully frozen until the complete 134-task run reaches 134 successful / 0 failed and its rejection statistics are reviewed.
+Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_FULL_RUN_ATTEMPT1.md`.
+
+The accepted v5 directory remains unchanged and `resume = true` remains enabled. Therefore the next run should skip the 131 successful tasks and retry only the 3 failed tasks.
+
+The Review Extractor is not frozen until the complete state reaches 134 successful / 0 failed and final rejection statistics are recorded.
 
 ## Automatic experiment handoff
 The runner publishes a compact result/error payload to `handoff/latest.json` and automatically commits/pushes only that path. This removes the need to paste long terminal outputs into chat. Full experiment artifacts remain local under ignored `outputs/` directories.
@@ -128,7 +140,8 @@ For fatal wrapper-level exceptions, `scripts/run_phase3_review_extractor_safe.py
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`
+- `docs/PHASE3_REVIEW_EXTRACTOR_FULL_RUN_ATTEMPT1.md`
 - `docs/EXPERIMENT_HANDOFF.md`
 
 ## Local outputs
-Historical pilot outputs remain untracked under v1-v5 output directories. The accepted v5 directory is reused for the full run so resume preserves the three accepted pilot tasks. Each run writes `extractions.jsonl` and `summary.json` locally.
+Historical pilot outputs remain untracked under v1-v5 output directories. The accepted-v5 directory is reused with `resume = true` so successful tasks are not recomputed during retry.
