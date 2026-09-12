@@ -1,0 +1,21 @@
+# PURE Phase 4 Profile Updater pilot configuration.
+#
+# This pilot consumes only the clean homogeneous final Review Extractor artifact.
+# It updates one user's profile chronologically for the first three observed
+# review extractions, beginning from an empty profile.
+
+[input]
+extractions_path = "outputs/phase3_review_extractor_final_1024/extractions.jsonl"
+
+[experiment]
+max_users = 1
+max_updates_per_user = 3
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 1024
+seed = 42
+
+[output]
+directory = "outputs/phase4_profile_updater_pilot_v1"
