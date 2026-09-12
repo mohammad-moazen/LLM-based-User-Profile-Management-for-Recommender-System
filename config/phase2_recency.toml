@@ -11,10 +11,11 @@ interactions_path = "outputs/phase1/interactions.jsonl.gz"
 sessions_path = "outputs/phase1/sessions.jsonl.gz"
 
 [experiment]
-# Validate the prompt/output behavior on three real sessions before running all 94.
-max_sessions = 3
+# The 3-session real-data pilot passed with complete valid rankings.
+# Run every frozen Phase 1 session; resume skips already successful pilot rows.
+max_sessions = 0
 resume = true
-fail_fast = true
+fail_fast = false
 
 [generation]
 temperature = 0.0
