@@ -68,6 +68,7 @@ class ReviewExtractorTests(unittest.TestCase):
         self.assertEqual(extraction.to_profile_dict()["likes"], ["light weight"])
         self.assertEqual(extraction.to_profile_dict()["dislikes"], ["cable feels stiff"])
         self.assertEqual(extraction.to_profile_dict()["key_features"], ["precise sensor"])
+        self.assertEqual(extraction.rejected_entries, ())
         self.assertEqual(
             extraction.to_audit_dict()["likes"][0],
             {"value": "lightweight mouse", "evidence": "light weight"},
@@ -80,14 +81,34 @@ class ReviewExtractorTests(unittest.TestCase):
             source_review=self.interaction["review_text"],
         )
         self.assertEqual(extraction.to_profile_dict()["likes"], ["LIGHT   WEIGHT"])
+        self.assertEqual(extraction.rejected_entries, ())
 
-    def test_parser_rejects_title_only_nonreview_evidence(self):
-        with self.assertRaisesRegex(ValueError, "non-verbatim review evidence"):
-            parse_review_extraction(
-                '{"likes":[],"dislikes":[],"key_features":['
-                '{"value":"RGB wired","evidence":"RGB Wired"}]}',
-                source_review=self.interaction["review_text"],
-            )
+    def test_title_only_nonreview_evidence_is_filtered_not_repaired(self):
+        extraction = parse_review_extraction(
+            '{"likes":[],"dislikes":[],"key_features":['
+            '{"value":"RGB wired","evidence":"RGB Wired"}]}',
+            source_review=self.interaction["review_text"],
+        )
+        self.assertEqual(extraction.to_profile_dict()["key_features"], [])
+        self.assertEqual(len(extraction.rejected_entries), 1)
+        rejected = extraction.rejected_entries[0]
+        self.assertEqual(rejected.field, "key_features")
+        self.assertEqual(rejected.value, "RGB wired")
+        self.assertEqual(rejected.evidence, "RGB Wired")
+        self.assertEqual(rejected.reason, "evidence_not_contiguous_span_of_review")
+
+    def test_valid_and_invalid_entries_are_partitioned_independently(self):
+        extraction = parse_review_extraction(
+            '{"likes":[{"value":"lightweight","evidence":"light weight"}],'
+            '"dislikes":[],"key_features":['
+            '{"value":"precise sensing","evidence":"precise sensor"},'
+            '{"value":"RGB","evidence":"RGB Wired"}]}',
+            source_review=self.interaction["review_text"],
+        )
+        self.assertEqual(extraction.to_profile_dict()["likes"], ["light weight"])
+        self.assertEqual(extraction.to_profile_dict()["key_features"], ["precise sensor"])
+        self.assertEqual(len(extraction.rejected_entries), 1)
+        self.assertEqual(extraction.rejected_entries[0].value, "RGB")
 
     def test_parser_accepts_normalized_value_when_evidence_is_grounded(self):
         extraction = parse_review_extraction(
