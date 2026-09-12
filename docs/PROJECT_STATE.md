@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilots v1-v3 identified and isolated semantic-grounding failure modes; evidence-backed pilot v4 is now ready on the same 3 reviews. Automatic Git handoff is enabled so local experiment output no longer needs to be pasted manually.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilots v1-v4 have isolated successive grounding failure modes. Pilot v5 is now ready with evidence-backed structured output plus entry-level conservative grounding filtering. Automatic Git handoff is active.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -17,7 +17,7 @@ The active model is the local derivative model `llama-3.2-3b-instruct-uncensored
 - Endpoint: `http://127.0.0.1:1234/v1`
 - Backend abstraction: OpenAI-compatible HTTP client
 - Hardware: Intel i7-13700H, 32 GB RAM, NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM
-- Repository workflow: ChatGPT pushes code/docs; user pulls and runs locally; experiment runners can auto-publish compact results through `handoff/latest.json`
+- Repository workflow: ChatGPT pushes code/docs; user pulls and runs locally; experiment runners auto-publish compact results through `handoff/latest.json`
 - Do not overwrite the user's local uncommitted README changes
 
 ## Frozen Phase 1
@@ -29,7 +29,7 @@ Frozen real-data basis:
 - final users: 55,209
 - final items: 17,388
 - eligible users with `min_history=3`: 54,451
-- selected pilot users: 20
+- selected users: 20
 - frozen continuous recommendation sessions: 94
 - candidate size: 20
 - candidate seed: 42
@@ -37,23 +37,17 @@ Frozen real-data basis:
 
 The task is continuous next-item ranking: rank one ground-truth next item among 19 non-interacted negatives. NDCG is averaged across sessions within each user first, then averaged across users.
 
-Frozen preprocessing decisions are documented in `docs/PREPROCESSING_POLICY.md`. Edge-case cleaning and deterministic sampling rules not specified by the paper are explicit reproduction choices.
+Frozen preprocessing decisions are documented in `docs/PREPROCESSING_POLICY.md`.
 
 ## Local LLM/runtime status
 Confirmed:
 - `GET /v1/models`: PASS
 - Python chat completion through localhost: PASS
 - localhost proxy interception bug fixed
-- numbered-candidate JSON ranking interface validated across all three full Phase 2 baseline runs
+- structured JSON Schema pass-through supported
 - 100-request host-memory stability test: PASS
-- generic OpenAI-compatible `response_format` pass-through added for structured JSON Schema output
 
-Active model:
-- `llama-3.2-3b-instruct-uncensored`
-
-Model/runtime policy: `docs/MODEL_RUNTIME_POLICY.md`.
-
-### Validated stable LM Studio load profile
+Validated stable LM Studio load profile:
 - Context Length: 8192
 - GPU Offload: 28 / max
 - CPU Thread Pool: 7
@@ -69,23 +63,18 @@ Model/runtime policy: `docs/MODEL_RUNTIME_POLICY.md`.
 - Flash Attention: ON
 - K/V Cache Quantization: OFF
 
-Memory stability result after warm-up and 100 repeated requests:
+Memory stability after warm-up and 100 requests:
 - post-warm-up private RAM: 4.760 GB
 - final private RAM: 4.761 GB
 - displayed private-RAM delta: +0.000 GB
 - displayed working-set delta: +0.000 GB
 - mean request latency: 0.096 seconds
 
-Interpretation: stable plateau; no sustained cumulative host-RAM growth observed in the controlled test. No further RAM-saving restriction is currently justified.
-
 Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
 
 ## Phase 2 frozen purchased-item baselines
-
 ### Sequential — PASS / FROZEN
 - successful sessions: 94
-- failed sessions: 0
-- users: 20
 - NDCG@1: 0.061667
 - NDCG@5: 0.182577
 - NDCG@10: 0.227799
@@ -95,8 +84,6 @@ Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
 
 ### Recency-Focused — PASS / FROZEN
 - successful sessions: 94
-- failed sessions: 0
-- users: 20
 - NDCG@1: 0.078333
 - NDCG@5: 0.199726
 - NDCG@10: 0.239947
@@ -106,8 +93,6 @@ Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
 
 ### In-Context Learning (ICL) — PASS / FROZEN
 - successful sessions: 94
-- failed sessions: 0
-- users: 20
 - NDCG@1: 0.061667
 - NDCG@5: 0.186356
 - NDCG@10: 0.255724
@@ -135,36 +120,42 @@ Active reproduction choices:
 - exact machine-readable schema and evidence validation are project-defined because the paper does not publish them.
 
 ### Pilot v1
-3/3 technical PASS, but title-only attributes leaked into `key_features` for Reviews 1 and 2. Not accepted.
+3/3 technical PASS, but title-only attributes leaked into `key_features`. Not accepted.
 
 ### Pilot v2
 3/3 technical PASS, but stronger prompt-only grounding still allowed title-derived attributes. Not accepted.
 
 ### Pilot v3
-Mechanical verbatim grounding successfully blocked title leakage, but the third review failed because `breathing LEDs` was a legitimate paraphrase of review text (`LEDs either breathe`) rather than an exact substring. Recorded as **grounding protection successful / representation rule too strict**. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`.
+Mechanical verbatim grounding blocked title leakage but rejected a legitimate grounded paraphrase (`breathing LEDs` vs. review text `LEDs either breathe`). Grounding protection worked; representation rule was too strict.
 
-### Pilot v4 — ready
-The schema now separates a concise model interpretation from exact review evidence:
+### Pilot v4
+Evidence-backed schema separated concise `value` from exact `evidence`. Review 1 passed. Review 2 contained three useful grounded entries plus one unsupported title-derived key feature:
 
 ```json
-{"value": "breathing LEDs", "evidence": "LEDs either breathe"}
+{"value": "backlit", "evidence": "rainbow backlit wired gaming keyboard mouse combo"}
 ```
 
-Every `evidence` field must be a contiguous review span. Only those verbatim evidence strings enter the downstream-safe extraction used by future profile construction; normalized `value` fields are kept only for audit. This prevents title-only content from entering the profile without rejecting grounded paraphrases.
+That evidence is absent from the review and came from product metadata. The deterministic validator correctly rejected the response; `fail_fast = true` then stopped before Review 3. Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`.
 
-Pilot v4 output is isolated at `outputs/phase3_review_extractor_v4/` and remains limited to the same first 3 reviews with `max_extractions = 3`, `resume = true`, `fail_fast = true`.
+### Pilot v5 — ready
+Pilot v5 keeps the evidence-backed schema but validates entries independently. Structurally valid grounded entries are retained; unsupported evidence entries are rejected and explicitly logged rather than causing all valid entries from that response to be discarded.
+
+Important invariants:
+- rejected entries are never rewritten or replaced;
+- only validated review evidence can enter the downstream profile-safe extraction;
+- rejected field/value/evidence/reason are retained for audit;
+- schema violations still fail the response;
+- Profile Updater remains responsible for redundancy/conflict consolidation.
+
+Pilot v5 output is isolated at `outputs/phase3_review_extractor_v5/` and remains limited to the same first 3 reviews with `max_extractions = 3`, `resume = true`, `fail_fast = true`.
 
 ## Automatic experiment handoff
-A reusable publisher now writes compact local-run results to `handoff/latest.json`, commits only that path with `git commit --only`, and pushes the current branch. It never stages README or unrelated working-tree files and never auto-pulls/rebases/merges.
+A reusable publisher writes compact local-run results to `handoff/latest.json`, commits only that path, and pushes the current branch. It never stages README or unrelated working-tree files and never auto-pulls/rebases/merges.
 
-The handoff is a mailbox, not a permanent result store. After ChatGPT reads a result, durable facts are moved into the appropriate result/protocol/project-state documents and the same handoff file is reset to `READY` in a later push.
-
-Important: Git history is persistent, so secrets/private credentials must never be placed in the handoff. See `docs/EXPERIMENT_HANDOFF.md`.
+After ChatGPT reads a handoff, durable findings are moved into the appropriate docs and the mailbox is reset to `READY`. Git history is persistent, so secrets/private credentials must never be placed in the handoff. See `docs/EXPERIMENT_HANDOFF.md`.
 
 ## Reproducibility note for final comparisons
-The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile above was finalized. Keep them as valid historical/frozen experiment records.
-
-For thesis-grade final comparison with future PURE/review-aware methods, prefer a clean rerun of all compared methods under the same finalized runtime profile rather than overwriting the existing results.
+The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile was finalized. Keep them as historical/frozen results. Before the final thesis comparison table, rerun compared methods under the same finalized runtime profile.
 
 ## Current implementation status
 Completed:
@@ -173,20 +164,21 @@ Completed:
 - Sequential, Recency-Focused, and ICL full baseline freezes
 - JSON-Schema request support
 - Review Extractor leakage-safe task builder, runner, parser, tests, and protocol docs
-- pilots v1-v3 with documented failure modes
-- evidence-backed v4 schema/validator
+- pilots v1-v4 with documented failure modes
+- evidence-backed schema
+- entry-level conservative evidence filter for pilot v5
 - automatic Git experiment-handoff channel
 
 ## Next actions
 1. Pull the current branch.
 2. Run the full unit-test suite.
 3. Keep LM Studio on the finalized stable runtime profile.
-4. Run `python scripts/run_phase3_review_extractor.py` for pilot v4.
-5. The runner will automatically push `handoff/latest.json`; manual terminal-output copying is no longer required.
-6. ChatGPT reads that handoff, records the durable result, and resets the mailbox.
-7. If v4 passes, enable all 134 unique review extractions with resume.
+4. Run `python scripts/run_phase3_review_extractor.py` for pilot v5.
+5. The runner automatically pushes `handoff/latest.json`; no terminal-output paste is needed.
+6. ChatGPT reads the handoff, records the durable result, and resets the mailbox.
+7. If v5 is clean, enable all 134 unique review extractions with resume and `fail_fast = false`.
 8. Freeze Review Extractor outputs, then implement Profile Updater and PURE recommender.
-9. Before the final thesis comparison table, rerun compared methods under the same finalized runtime profile.
+9. Rerun compared baselines under the finalized runtime profile before the final thesis comparison table.
 
 ## Working rule
 This file is the authoritative current snapshot. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
