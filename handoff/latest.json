@@ -1,5 +1,40 @@
 {
-  "state": "READY",
-  "message": "Full Review Extractor attempt 1 was reviewed and recorded. Retry patch handles blank evidence entry-by-entry. Mailbox reset for resume-only retry of the 3 failed tasks.",
-  "next_expected_experiment": "phase3_review_extractor_retry_blank_evidence"
+  "state": "RESULT",
+  "experiment": "phase3_review_extractor",
+  "summary": {
+    "component": "Review Extractor",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "required_unique_extractions": 134,
+    "requested_extractions": 134,
+    "successful_extractions": 134,
+    "failed_extractions": 0,
+    "users_in_successful_extractions": 20,
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "evidence_backed_json_schema",
+      "grounding_validation": "entry_level_verbatim_evidence_filter"
+    },
+    "extracted_entry_counts": {
+      "likes": 236,
+      "dislikes": 97,
+      "key_features": 163
+    },
+    "rejected_unsupported_entries": 36,
+    "usage_totals": {
+      "prompt_tokens": 70502,
+      "completion_tokens": 22327,
+      "total_tokens": 92829
+    },
+    "latency": {
+      "total_seconds": 525.3383632000405,
+      "mean_seconds": 3.920435546268959
+    },
+    "status": "PASS"
+  },
+  "pilot_rows": [],
+  "errors": []
 }
