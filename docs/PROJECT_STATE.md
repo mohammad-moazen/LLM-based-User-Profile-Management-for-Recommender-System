@@ -7,13 +7,13 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is now validated and stable. Next: review-aware/PURE implementation.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
 ## Environment
 - Development: Python + VS Code
-- Local-only inference through Bionic / LM Studio OpenAI-compatible server
+- Local-only inference through LM Studio / llama.cpp OpenAI-compatible server
 - Endpoint: `http://127.0.0.1:1234/v1`
 - Backend abstraction: OpenAI-compatible HTTP client
 - Hardware: Intel i7-13700H, 32 GB RAM, NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM
@@ -45,16 +45,39 @@ Confirmed:
 - Python chat completion through localhost: PASS
 - localhost proxy interception bug fixed
 - numbered-candidate JSON ranking interface validated across all three full Phase 2 baseline runs
+- 100-request host-memory stability test: PASS
 
 Active model:
 - `llama-3.2-3b-instruct-uncensored`
 
 Model/runtime policy: `docs/MODEL_RUNTIME_POLICY.md`.
 
-### Runtime memory observation
-The user observed cumulative-looking system-RAM growth in `llama-server.exe` across repeated runs. During the first full ICL run, one session failed and the run reached 93/94. The local server was restarted to clear process-local RAM/cache state without changing model or generation settings. Resume mode then retried only the failed session and the final ICL run reached 94/94 PASS.
+### Validated stable LM Studio load profile
+- Context Length: 8192
+- GPU Offload: 28 / max
+- CPU Thread Pool: 7
+- Evaluation Batch Size: 512
+- Physical Batch Size: 256
+- Max Concurrent Predictions: 1
+- Unified KV Cache: ON
+- Context Checkpoints: 32
+- KV Cache Offload to GPU: ON
+- Keep Model in Memory: ON
+- mmap: ON
+- Speculative Decoding: OFF
+- Flash Attention: ON
+- K/V Cache Quantization: OFF
 
-A fixed server cache/runtime policy should be documented before final thesis-grade efficiency comparisons. If that policy materially changes from the current runs, all compared baselines should be rerun under the same policy.
+Memory stability result after warm-up and 100 repeated requests:
+- post-warm-up private RAM: 4.760 GB
+- final private RAM: 4.761 GB
+- displayed private-RAM delta: +0.000 GB
+- displayed working-set delta: +0.000 GB
+- mean request latency: 0.096 seconds
+
+Interpretation: stable plateau; no sustained cumulative host-RAM growth observed in the controlled test. No further RAM-saving restriction is currently justified.
+
+Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
 
 ## Shared Phase 2 output interface
 After early Sequential formatting failures, the stable interface is:
@@ -70,10 +93,6 @@ The rejected formatting-debug runs are not included in frozen metrics.
 ## Phase 2 frozen purchased-item baselines
 
 ### Sequential — PASS / FROZEN
-Protocol: `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
-
-Result: `docs/PHASE2_SEQUENTIAL_RESULTS.md`
-
 - successful sessions: 94
 - failed sessions: 0
 - users: 20
@@ -85,10 +104,6 @@ Result: `docs/PHASE2_SEQUENTIAL_RESULTS.md`
 - mean latency: 1.385 seconds/session
 
 ### Recency-Focused — PASS / FROZEN
-Protocol: `docs/PHASE2_RECENCY_PROTOCOL.md`
-
-Result: `docs/PHASE2_RECENCY_RESULTS.md`
-
 - successful sessions: 94
 - failed sessions: 0
 - users: 20
@@ -100,10 +115,6 @@ Result: `docs/PHASE2_RECENCY_RESULTS.md`
 - mean latency: 1.394 seconds/session
 
 ### In-Context Learning (ICL) — PASS / FROZEN
-Protocol: `docs/PHASE2_ICL_PROTOCOL.md`
-
-Result: `docs/PHASE2_ICL_RESULTS.md`
-
 - successful sessions: 94
 - failed sessions: 0
 - users: 20
@@ -114,18 +125,12 @@ Result: `docs/PHASE2_ICL_RESULTS.md`
 - total reported tokens: 66,877
 - mean latency: 1.343 seconds/session
 
-The first full ICL attempt (93/94) is retained only as runtime/debugging history and is not the final ICL result.
+Comparison record: `docs/PHASE2_BASELINE_COMPARISON.md`.
 
-## Cross-baseline comparison
-Comparison record: `docs/PHASE2_BASELINE_COMPARISON.md`
+## Reproducibility note for final comparisons
+The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile above was finalized. Keep them as valid historical/frozen experiment records.
 
-Current local ranking by cutoff:
-- NDCG@1: Recency-Focused best
-- NDCG@5: Recency-Focused best
-- NDCG@10: ICL best
-- NDCG@20: Recency-Focused best
-
-These comparisons are descriptive for the frozen local derivative-model experiment only.
+For thesis-grade final comparison with future PURE/review-aware methods, prefer a clean rerun of all compared methods under the same finalized runtime profile rather than overwriting the existing results.
 
 ## Current implementation status
 Completed:
@@ -139,17 +144,16 @@ Completed:
 - Recency-Focused full 94-session run and freeze
 - ICL full 94-session run and freeze
 - frozen comparison of all three purchased-item baselines
-- runtime RAM/cache observation documented
+- local runtime memory-stability validation and finalized load profile
 
 ## Next phase
-Before running substantially longer review-aware prompts, lock down and record a stable local-server cache/runtime policy so RAM behavior is controlled and comparable.
-
-Then implement the review-aware/PURE path in paper order:
+Proceed with the review-aware/PURE path in paper order:
 1. Review Extractor (likes, dislikes, key features)
 2. Profile Updater (remove redundancy/overlap/conflicts while preserving crucial information)
 3. PURE recommender using the evolving profile and purchased-item context
 4. Review-aware baseline variants where required for comparison
 5. Pilot on a few frozen sessions, then full 94-session evaluation
+6. Before the final thesis comparison table, rerun all compared methods under the same finalized runtime profile
 
 ## Working rule
 This file is the authoritative current snapshot. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
