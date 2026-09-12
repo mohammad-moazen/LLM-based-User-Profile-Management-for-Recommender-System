@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilot v5 is PASS / ACCEPTED. Full extraction attempt 1 reached 131/134 successful; three blank-evidence failures are patched and ready for resume-only retry. Automatic Git handoff is active.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor is now PASS / FROZEN at 134/134 successful extractions. Next: benchmark safe throughput improvements, then implement Profile Updater. Automatic Git handoff is active.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -102,7 +102,7 @@ Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
 
 Comparison record: `docs/PHASE2_BASELINE_COMPARISON.md`.
 
-## Phase 3 PURE Review Extractor
+## Phase 3 PURE Review Extractor — PASS / FROZEN
 Protocol: `docs/PHASE3_REVIEW_EXTRACTOR_PROTOCOL.md`.
 
 Paper-derived behavior:
@@ -111,87 +111,58 @@ Paper-derived behavior:
 - Step 1 supplies ASIN/product/review context;
 - the paper reports JSON-schema structured outputs.
 
-Active reproduction choices:
+Accepted reproduction choices:
 - one canonical incoming interaction per LLM call, matching incremental `E(r_t)` behavior;
 - prompt includes ASIN, canonical title, rating, and review text;
 - rating inclusion is an explicit interpretation based on Figure 1;
 - target/future reviews are never extracted early;
-- the 94 frozen sessions require 134 unique historical review extractions;
-- exact machine-readable schema and evidence validation are project-defined because the paper does not publish them.
+- evidence-backed JSON schema with audit-only normalized `value` plus review-grounded `evidence`;
+- entry-level conservative evidence filtering;
+- rejected or blank evidence never enters profile-safe data;
+- exact schema/grounding validator are project-defined because the paper does not publish them.
 
-### Pilot history
-- v1: 3/3 technical PASS, but title-only attributes leaked into `key_features`; not accepted.
-- v2: 3/3 technical PASS, but stronger prompt-only grounding still allowed title-derived attributes; not accepted.
-- v3: mechanical verbatim grounding blocked title leakage but rejected a legitimate grounded paraphrase; representation rule too strict.
-- v4: evidence-backed schema separated concise `value` from exact `evidence`; one title-derived unsupported evidence claim was caught and fail-fast stopped the pilot.
+Pilot history v1-v4 isolated title leakage and over-strict grounding. Pilot v5 was accepted and then used for the complete run.
 
-### Pilot v5 — PASS / ACCEPTED
-Pilot v5 keeps the evidence-backed schema and validates every evidence entry independently. Unsupported entries are rejected/logged while other grounded entries from the same structurally valid response are preserved.
-
-Pilot v5 result:
-- successful extractions: 3/3
+Final frozen result:
+- required unique extractions: 134
+- successful extractions: 134
 - failed extractions: 0
-- accepted likes entries: 6
-- accepted dislikes entries: 2
-- accepted key-feature entries: 3
-- rejected unsupported entries: 1
-- accepted entries: 11
-- total generated entries before grounding filter: 12
-- pilot rejection rate: 8.33%
-- total reported tokens: 1,898
-- mean latency: 3.999 seconds/extraction
-- status: PASS
-
-The rejected entry was the Review-2 title-derived `backlit` evidence. It did not enter the profile-safe extraction. All stored profile-safe entries are review-grounded.
-
-Known conservative limitation: audit-only `value` may occasionally be broader or less precisely aligned with the selected evidence span. The downstream profile does not use `value`; it uses only mechanically validated review evidence. Longer/overlapping evidence spans are allowed at this stage and will be consolidated by Profile Updater.
-
-Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V5.md`.
-
-### Full Review Extractor run — ATTEMPT 1 / INCOMPLETE
-The accepted v5 configuration was run across all 134 required historical reviews.
-
-Result:
-- requested: 134
-- successful: 131
-- failed: 3
 - users represented: 20
-- accepted likes entries: 224
-- accepted dislikes entries: 95
-- accepted key-feature entries: 156
-- rejected unsupported entries: 34
-- total reported tokens: 90,055
-- mean successful-request latency: 3.848 seconds
-- total successful-request latency: 504.068 seconds (~8.40 minutes)
-- status: INCOMPLETE
+- accepted likes entries: 236
+- accepted dislikes entries: 97
+- accepted key-feature entries: 163
+- total accepted entries: 496
+- rejected unsupported/blank-evidence entries: 36
+- total generated entries before grounding filter: 532
+- final entry rejection rate: 6.77%
+- prompt tokens: 70,502
+- completion tokens: 22,327
+- total reported tokens: 92,829
+- total successful-request latency: 525.338 seconds (~8.76 minutes)
+- mean latency: 3.920 seconds/extraction
+- status: PASS / FROZEN
 
-The 34 rejected unsupported entries were safely excluded and are not failures. The only three task failures all came from generated `key_features` entries with blank evidence strings (`evidence: ""`). The parser previously raised before the entry-level filter could classify those entries.
+The 36 rejected entries are conservative-filter events, not task failures, and do not enter downstream profile-safe data. Profile Updater must consume only accepted `extraction` fields from the frozen local directory `outputs/phase3_review_extractor_v5/`.
 
-Retry patch:
-- non-string evidence remains a structural error;
-- blank evidence is now an individually rejected entry with reason `empty_evidence`;
-- valid entries from the same response are preserved;
-- schema/prompt additionally discourage blank evidence;
-- no blank evidence can enter the profile-safe representation.
-
-Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_FULL_RUN_ATTEMPT1.md`.
-
-The accepted-v5 output directory is unchanged, `resume = true` remains enabled, and the next run should therefore skip 131 successful tasks and retry only the 3 failed tasks.
-
-Review Extractor will be frozen only after 134/134 successful and final rejection statistics are recorded.
+Final record: `docs/PHASE3_REVIEW_EXTRACTOR_FINAL_RESULTS.md`.
 
 ## Automatic experiment handoff
 A reusable publisher writes compact local-run results to `handoff/latest.json`, commits only that path, and pushes the current branch. It never stages README or unrelated working-tree files and never auto-pulls/rebases/merges.
 
 After ChatGPT reads a handoff, durable findings are moved into the appropriate docs and the mailbox is reset to `READY`. Git history is persistent, so secrets/private credentials must never be placed in the handoff. See `docs/EXPERIMENT_HANDOFF.md`.
 
-Fatal wrapper-level exceptions can be run through `scripts/run_phase3_review_extractor_safe.py`, which publishes the full Python traceback into the handoff.
+Fatal wrapper-level exceptions can be run through safe wrappers that publish the full Python traceback into the handoff.
 
 ## Reproducibility note for final comparisons
 The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile was finalized. Keep them as historical/frozen results. Before the final thesis comparison table, rerun compared methods under the same finalized runtime profile.
 
 ## Performance note
-The first full Review Extractor attempt provides a useful throughput baseline: about 3.85 seconds per successful extraction, with ~8.40 minutes of successful-request latency across 131 completed tasks. Performance optimization will be benchmarked separately after the extractor is fully complete so runtime tuning is not mixed into the accepted scientific result.
+The frozen Review Extractor provides a real throughput baseline: **3.920 seconds per extraction** and **~8.76 minutes total model-call latency for 134 successful extractions**. Performance tuning must be benchmarked separately and must not change model identity, context length, prompt semantics, output schema, K/V quantization, or accepted scientific outputs.
+
+Preferred safe tuning order:
+1. benchmark larger evaluation/physical batch sizes while keeping concurrency at 1;
+2. only then benchmark concurrency 2 separately if memory remains stable;
+3. do not alter context length, prompt content, model quantization, or K/V cache quantization merely for speed.
 
 ## Current implementation status
 Completed:
@@ -199,24 +170,19 @@ Completed:
 - local inference infrastructure and stable RAM profile
 - Sequential, Recency-Focused, and ICL full baseline freezes
 - JSON-Schema request support
-- Review Extractor leakage-safe task builder, runner, parser, tests, and protocol docs
+- Review Extractor leakage-safe task builder, runner, parser, tests, protocol docs
 - pilots v1-v5 with documented failure modes and accepted grounding policy
-- evidence-backed schema with entry-level conservative evidence filtering
-- full Review Extractor attempt 1: 131/134 successful
-- blank-evidence retry patch
+- full Review Extractor run and resume-only retry
+- Review Extractor 134/134 PASS / FROZEN
 - automatic Git experiment-handoff channel and safe traceback wrapper
 
 ## Next actions
-1. Pull the current branch.
-2. Run the unit-test suite.
-3. Keep LM Studio on the finalized stable runtime profile.
-4. Run `python scripts/run_phase3_review_extractor_safe.py` again.
-5. Resume should skip the 131 successful tasks and retry only the 3 failures.
-6. The runner automatically publishes the compact retry summary/error handoff; no terminal-output paste is needed.
-7. When 134/134 are successful, freeze Review Extractor outputs and implement Profile Updater.
-8. Then implement the PURE recommender and evaluate it on the frozen 94 sessions.
-9. Separately benchmark safe throughput improvements after the extractor is frozen.
-10. Rerun compared baselines under the finalized runtime profile before the final thesis comparison table.
+1. Benchmark safe runtime throughput improvements without changing the frozen scientific protocol.
+2. Select/document a faster runtime profile only if memory remains stable and output behavior remains compatible.
+3. Implement Profile Updater using only frozen accepted Review Extractor evidence.
+4. Pilot Profile Updater chronologically with no future leakage.
+5. Implement PURE recommender and evaluate on the frozen 94 sessions.
+6. Rerun compared baselines under the finalized runtime profile before the final thesis comparison table.
 
 ## Working rule
 This file is the authoritative current snapshot. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
