@@ -1,0 +1,22 @@
+# Phase 6C final controlled ICL baseline rerun.
+#
+# Uses the exact frozen 94 sessions and finalized generation/runtime controls.
+# ICL semantics remain unchanged; hybrid changes only output serialization/validation.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+max_sessions = 0
+resume = false
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase6_icl_hybrid_final_v1"
