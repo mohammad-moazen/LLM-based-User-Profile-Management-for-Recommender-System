@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender PASS / FROZEN. Phase 6A Sequential PASS / FROZEN. Phase 6B Recency-Focused PASS / FROZEN. Phase 6C ICL is READY for the final controlled rerun.**
+**Phase 1 PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender PASS / FROZEN. Phase 6A Sequential PASS / FROZEN. Phase 6B Recency-Focused PASS / FROZEN. Phase 6C ICL PASS / FROZEN. Final controlled Sequential vs Recency-Focused vs ICL vs PURE comparison PASS / FROZEN.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -97,28 +97,40 @@ Authoritative output: `outputs/phase6_recency_hybrid_final_v1/`
 
 Detailed record: `docs/PHASE6_RECENCY_FINAL_RESULTS.md`.
 
-### Phase 6C ICL — READY
-ICL keeps paper-aligned semantics:
-- interactions through `t-2` are earlier purchase context;
-- purchase at `t-1` is presented as the in-context demonstrated recommendation outcome;
-- current frozen candidates are ranked;
-- reviews, ratings, PURE profiles, target markers, and future information are excluded.
+### Phase 6C ICL — PASS / FROZEN
+Authoritative output: `outputs/phase6_icl_hybrid_final_v1/`
 
-Files:
-- config: `config/phase6_icl_hybrid.toml`
-- direct prompt: existing `src/pure_recommender/baselines/icl.py`
-- rank-map fallback: `src/pure_recommender/baselines/icl_rankmap.py`
-- runner: `scripts/run_phase6_icl_hybrid.py`
-- safe wrapper: `scripts/run_phase6_icl_hybrid_safe.py`
-- output: `outputs/phase6_icl_hybrid_final_v1/`
+- requested/successful/failed: 94 / 94 / 0
+- direct-primary successes: 94
+- fallback attempts: 0
+- NDCG@1/5/10/20: **0.061667 / 0.184046 / 0.244447 / 0.368731**
+- total tokens: 66,909
+- mean session latency: 1.0671 s
 
-Acceptance criteria:
-- 94/94 valid final rankings;
-- zero failures;
-- every triggered fallback passes strict rank-map validation;
-- no post-generation repair.
+Detailed record: `docs/PHASE6_ICL_FINAL_RESULTS.md`.
 
-After ICL passes, freeze the final thesis comparison table: Sequential vs Recency-Focused vs ICL vs PURE.
+## Final controlled thesis comparison — PASS / FROZEN
+
+| Method | NDCG@1 | NDCG@5 | NDCG@10 | NDCG@20 |
+|---|---:|---:|---:|---:|
+| Sequential | 0.078333 | 0.191193 | 0.229859 | 0.373286 |
+| Recency-Focused | 0.095000 | 0.206505 | 0.252952 | 0.385799 |
+| ICL | 0.061667 | 0.184046 | 0.244447 | 0.368731 |
+| **PURE** | **0.104251** | **0.243553** | **0.318376** | **0.416023** |
+
+Recency-Focused is the strongest baseline at all four cutoffs. Relative PURE improvement over that strongest baseline is approximately:
+- NDCG@1: +9.74%
+- NDCG@5: +17.94%
+- NDCG@10: +25.86%
+- NDCG@20: +7.83%
+
+Final comparison record: `docs/PHASE6_FINAL_COMPARISON.md`.
+
+## Scientific labeling
+The final comparison is authoritative for this project's local derivative model, frozen 20-user subset, preprocessing policy, candidate sampling, and reproduction engineering choices. It must not be presented as an exact reproduction of the paper's checkpoint or full-dataset scores.
+
+## Next stage
+The experimental reproduction pipeline and controlled method-comparison table are complete. Future work should focus on thesis writing, statistical/qualitative analysis, visualization, limitations, and any explicitly planned ablation or extension rather than changing frozen experiment outputs.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
