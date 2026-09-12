@@ -1,5 +1,204 @@
 {
-  "state": "READY",
-  "message": "Scored pilot v2 passed structurally 8/8 but is not accepted for final use because score ties were severe. Rank-map pilot v3 is ready on the same 8-session diagnostic set with no ties, retry, or post-generation repair allowed.",
-  "next_expected_experiment": "phase5_pure_recommender_rankmap_pilot_v3"
+  "state": "RESULT",
+  "experiment": "phase5_pure_recommender_rankmap_pilot_v3",
+  "summary": {
+    "component": "PURE Recommender",
+    "run_version": "rankmap_pilot_v3",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "requested_sessions": 8,
+    "successful_sessions": 6,
+    "failed_sessions": 2,
+    "users_in_successful_sessions": 4,
+    "profile_state_alignment": "target_position_minus_one",
+    "output_protocol": {
+      "model_output": "required_integer_rank_position_per_candidate",
+      "rank_range": [
+        1,
+        20
+      ],
+      "parser_requires_rank_value_permutation": true,
+      "tie_breaking": "none",
+      "deterministic_post_generation_repair": false
+    },
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "complete_candidate_rank_map_json_schema"
+    },
+    "known_direct_ranking_failures": {
+      "tested": 2,
+      "successful_under_rankmap_protocol": 2
+    },
+    "ndcg": {
+      "1": 0.0,
+      "5": 0.35441399076424174,
+      "10": 0.39893988915274453,
+      "20": 0.4301898891527445
+    },
+    "prompt_tokens": {
+      "total": 5772,
+      "mean": 962,
+      "max": 1666
+    },
+    "completion_tokens": {
+      "total": 935,
+      "mean": 155.83333333333334
+    },
+    "latency": {
+      "total_seconds": 22.610995899995032,
+      "mean_seconds": 3.7684993166658387
+    },
+    "status": "INCOMPLETE"
+  },
+  "rows": [
+    {
+      "status": "ok",
+      "session_id": "A24ZRTTC3SPX8C:4",
+      "known_direct_ranking_failure": false,
+      "target_candidate_number": 17,
+      "target_assigned_rank": 4,
+      "target_rank": 4,
+      "finish_reason": "stop",
+      "latency_seconds": 3.986225000000559,
+      "usage": {
+        "prompt_tokens": 880,
+        "completion_tokens": 156,
+        "total_tokens": 1036,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A24ZRTTC3SPX8C:5",
+      "known_direct_ranking_failure": false,
+      "target_candidate_number": 13,
+      "target_assigned_rank": 2,
+      "target_rank": 2,
+      "finish_reason": "stop",
+      "latency_seconds": 3.650852099999611,
+      "usage": {
+        "prompt_tokens": 974,
+        "completion_tokens": 156,
+        "total_tokens": 1130,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "error",
+      "session_id": "A2GSRMMRODQ4JH:4",
+      "known_direct_ranking_failure": false,
+      "target_candidate_number": null,
+      "target_assigned_rank": null,
+      "target_rank": null,
+      "finish_reason": null,
+      "latency_seconds": 3.617271700000856,
+      "usage": null,
+      "error": "Rank values are not a complete permutation; duplicates=[16], missing=[19]",
+      "raw_response": "{\n    \"ranks\": {\n        \"1\": 10,\n        \"2\": 11,\n        \"3\": 12,\n        \"4\": 13,\n        \"5\": 14,\n        \"6\": 15,\n        \"7\": 16,\n        \"8\": 17,\n        \"9\": 18,\n        \"10\": 1,\n        \"11\": 2,\n        \"12\": 3,\n        \"13\": 4,\n        \"14\": 5,\n        \"15\": 6,\n        \"16\": 7,\n        \"17\": 8,\n        \"18\": 9,\n        \"19\": 20,\n        \"20\": 16\n    }\n}"
+    },
+    {
+      "status": "ok",
+      "session_id": "A2GSRMMRODQ4JH:5",
+      "known_direct_ranking_failure": false,
+      "target_candidate_number": 1,
+      "target_assigned_rank": 6,
+      "target_rank": 6,
+      "finish_reason": "stop",
+      "latency_seconds": 3.651282499995432,
+      "usage": {
+        "prompt_tokens": 702,
+        "completion_tokens": 156,
+        "total_tokens": 858,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "error",
+      "session_id": "A2GSRMMRODQ4JH:6",
+      "known_direct_ranking_failure": false,
+      "target_candidate_number": null,
+      "target_assigned_rank": null,
+      "target_rank": null,
+      "finish_reason": null,
+      "latency_seconds": 3.609773899996071,
+      "usage": null,
+      "error": "Rank values are not a complete permutation; duplicates=[16], missing=[3]",
+      "raw_response": "{\n    \"ranks\": {\n        \"1\": 10,\n        \"2\": 18,\n        \"3\": 6,\n        \"4\": 14,\n        \"5\": 8,\n        \"6\": 15,\n        \"7\": 19,\n        \"8\": 11,\n        \"9\": 20,\n        \"10\": 1,\n        \"11\": 16,\n        \"12\": 13,\n        \"13\": 4,\n        \"14\": 5,\n        \"15\": 17,\n        \"16\": 7,\n        \"17\": 12,\n        \"18\": 9,\n        \"19\": 2,\n        \"20\": 16\n    }\n}"
+    },
+    {
+      "status": "ok",
+      "session_id": "A2GSRMMRODQ4JH:7",
+      "known_direct_ranking_failure": false,
+      "target_candidate_number": 3,
+      "target_assigned_rank": 15,
+      "target_rank": 15,
+      "finish_reason": "stop",
+      "latency_seconds": 3.7271197000009124,
+      "usage": {
+        "prompt_tokens": 729,
+        "completion_tokens": 156,
+        "total_tokens": 885,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A3RQZ1J5F5G104:10",
+      "known_direct_ranking_failure": true,
+      "target_candidate_number": 15,
+      "target_assigned_rank": 5,
+      "target_rank": 5,
+      "finish_reason": "stop",
+      "latency_seconds": 3.7330908000003546,
+      "usage": {
+        "prompt_tokens": 1666,
+        "completion_tokens": 155,
+        "total_tokens": 1821,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A26C4UAI3IXYF:6",
+      "known_direct_ranking_failure": true,
+      "target_candidate_number": 20,
+      "target_assigned_rank": 3,
+      "target_rank": 3,
+      "finish_reason": "stop",
+      "latency_seconds": 3.8624257999981637,
+      "usage": {
+        "prompt_tokens": 821,
+        "completion_tokens": 156,
+        "total_tokens": 977,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    }
+  ]
 }
