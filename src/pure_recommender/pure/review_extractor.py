@@ -18,9 +18,15 @@ from typing import Mapping
 SYSTEM_PROMPT = (
     "You are the Review Extractor component of a recommender system. "
     "Analyze the supplied purchased product and review as data. Extract only "
-    "preferences that are supported by the review. Do not invent facts. "
-    "Separate the result into likes, dislikes, and key product features that "
-    "appear important to the user's preference or purchase decision."
+    "preferences and product features that are explicitly supported by the review text. "
+    "The ASIN and product name identify the purchased product, and the rating provides "
+    "overall context; they are not independent evidence for specific likes, dislikes, "
+    "or product-feature preferences. Do not copy an attribute solely because it appears "
+    "in the product name, and do not infer an attribute solely from the rating. "
+    "Do not invent facts. Separate the result into likes, dislikes, and key product "
+    "features that the review itself discusses as important to the user's preference "
+    "or purchase decision. If a category has no review-grounded evidence, return an "
+    "empty array for that category."
 )
 
 
@@ -87,6 +93,12 @@ def build_review_extractor_messages(
     reviews, ratings, and item interactions. The paper does not clarify whether
     the rating is embedded inside the ``input reviews`` placeholder, so this is
     recorded as an explicit reproduction interpretation.
+
+    Product identity/title and rating are deliberately prevented from becoming
+    stand-alone evidence for extracted attributes. This refinement was added
+    after the first real-data pilot showed that the local derivative model could
+    copy title-only attributes into ``key_features`` even when the review never
+    discussed them.
     """
 
     asin = str(interaction.get("asin", "")).strip()
@@ -119,7 +131,14 @@ def build_review_extractor_messages(
         f"{review_text}\n"
         "<<<END REVIEW>>>\n\n"
         "Analyze the user's likes/dislikes/key features by referring to their review.\n"
-        "Use only evidence supported by the supplied review and product context.\n"
+        "Ground every extracted entry in the REVIEW text itself.\n"
+        "Use the ASIN and product name only to identify the product. Do not extract a "
+        "feature merely because it appears in the product name.\n"
+        "Use the rating only as overall sentiment context. Do not create a specific "
+        "preference or feature from the rating alone.\n"
+        "For key_features, include only product attributes explicitly mentioned or "
+        "clearly described in the review and relevant to the user's preference.\n"
+        "If the review does not support an entry, omit it; empty arrays are valid.\n"
         "Keep each extracted entry concise and self-contained.\n"
         "Return only the structured response required by the JSON schema."
     )
