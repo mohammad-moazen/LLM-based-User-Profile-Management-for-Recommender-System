@@ -1,5 +1,56 @@
 {
-  "state": "READY",
-  "message": "Pilot v5 handoff was reviewed and recorded. Mailbox reset for the full Phase 3 Review Extractor run.",
-  "next_expected_experiment": "phase3_review_extractor_full_v5"
+  "state": "RESULT",
+  "experiment": "phase3_review_extractor",
+  "summary": {
+    "component": "Review Extractor",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "required_unique_extractions": 134,
+    "requested_extractions": 134,
+    "successful_extractions": 131,
+    "failed_extractions": 3,
+    "users_in_successful_extractions": 20,
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "evidence_backed_json_schema",
+      "grounding_validation": "entry_level_verbatim_evidence_filter"
+    },
+    "extracted_entry_counts": {
+      "likes": 224,
+      "dislikes": 95,
+      "key_features": 156
+    },
+    "rejected_unsupported_entries": 34,
+    "usage_totals": {
+      "prompt_tokens": 68634,
+      "completion_tokens": 21421,
+      "total_tokens": 90055
+    },
+    "latency": {
+      "total_seconds": 504.0679780000355,
+      "mean_seconds": 3.8478471603056144
+    },
+    "status": "INCOMPLETE"
+  },
+  "pilot_rows": [],
+  "errors": [
+    {
+      "task_id": "A3RQZ1J5F5G104:2",
+      "error": "Review Extractor field 'key_features' contains invalid evidence",
+      "raw_response": "{\n  \"likes\": [\n    {\n      \"value\": \"great design\",\n      \"evidence\": \"The actual design is great.\"\n    },\n    {\n      \"value\": \"fantastic customization\",\n      \"evidence\": \"The customization is fantastic\"\n    },\n    {\n      \"value\": \"excellent button location\",\n      \"evidence\": \"the button location is excellent\"\n    },\n    {\n      \"value\": \"smooth feet\",\n      \"evidence\": \"the feet are smooth\"\n    },\n    {\n      \"value\": \"great pinky shield\",\n      \"evidence\": \"the pinky shield is great\"\n    }\n  ],\n  \"dislikes\": [\n    {\n      \"value\": \"second-rate build quality\",\n      \"evidence\": \"Unfortunately the build quality and the software are second rate.\"\n    },\n    {\n      \"value\": \"software issues\",\n      \"evidence\": \"The scroll wheel registers multiple clicks when pressed at random intervals. The front thumb button on mine would stop working, but would start again when I changed profiles.\"\n    },\n    {\n      \"value\": \"flexible panel\",\n      \"evidence\": \"so I don't know how durable that part is...so I'm returning it today.\"\n    }\n  ],\n  \"key_features\": [\n    {\n      \"value\": \"durable construction\",\n      \"evidence\": \"\"\n    },\n    {\n      \"value\": \"responsive scroll wheel\",\n      \"evidence\": \"\"\n    },\n    {\n      \"value\": \"customizable\",\n      \"evidence\": \"The customization is fantastic\"\n    }\n  ]\n}"
+    },
+    {
+      "task_id": "A2BFIYZYNK54QX:17",
+      "error": "Review Extractor field 'key_features' contains invalid evidence",
+      "raw_response": "{\n  \"likes\": [\n    {\n      \"value\": \"clearer sound quality\",\n      \"evidence\": \"I'm not *too* heavy into multiplayer on my PS4, but when I do play it, or just playing in general, it's always nice to have a clearer sound quality out of the system.\"\n    },\n    {\n      \"value\": \"comfortable\",\n      \"evidence\": \"It's crystal-clear and totally comfortable.\"\n    },\n    {\n      \"value\": \"easy setup\",\n      \"evidence\": \"The setup for my PS4 was a SNAP. It took maybe three minutes max.\"\n    },\n    {\n      \"value\": \"long battery life\",\n      \"evidence\": \"The charge lasts good and long. I've been using them for the last three nights for about three hours each time and haven't had to recharge yet.\"\n    },\n    {\n      \"value\": \"good sound quality on mobile devices\",\n      \"evidence\": \"It's also awesome with my mobile devices. Sound and mic for phone calls is great, and the sound for my tablet is also great.\"\n    }\n  ],\n  \"dislikes\": [],\n  \"key_features\": [\n    {\n      \"value\": \"wireless connectivity\",\n      \"evidence\": \"\"\n    },\n    {\n      \"value\": \"volume/mute controls on earpieces\",\n      \"evidence\": \"The volume and mute controls are on the sides of each respective earpiece, and they work like gems.\"\n    },\n    {\n      \"value\": \"wired jack for Xbox One controller\",\n      \"evidence\": \"It comes with a wired jack specially built for your Xbox One controller.\"\n    }\n  ]\n}"
+    },
+    {
+      "task_id": "A30QZOB8GIOBJO:1",
+      "error": "Review Extractor field 'key_features' contains invalid evidence",
+      "raw_response": "{\n  \"likes\": [\n    {\n      \"value\": \"realistic and based on fact\",\n      \"evidence\": \"makes you feel as if your really there (thanks to the consulting work they do with Captain Dale Dye)\"\n    },\n    {\n      \"value\": \"one of the best companies out there\",\n      \"evidence\": \"EA(One of the best companies out there)always goes all out with this series.\"\n    }\n  ],\n  \"dislikes\": [],\n  \"key_features\": [\n    {\n      \"value\": \"WWII setting\",\n      \"evidence\": \"\"\n    },\n    {\n      \"value\": \"consulting work with Captain Dale Dye\",\n      \"evidence\": \"thanks to the consulting work they do with Captain Dale Dye\"\n    }\n  ]\n}"
+    }
+  ]
 }
