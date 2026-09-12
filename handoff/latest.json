@@ -1,5 +1,61 @@
 {
-  "state": "READY",
-  "message": "Phase 5 PURE hybrid full v4 passed 94/94 and is frozen. Final PURE NDCG@1/5/10/20 = 0.1042507003 / 0.2435534924 / 0.3183764185 / 0.4160225252. Phase 6 now starts controlled baseline reruns under the same finalized runtime and hybrid mechanical output policy. Sequential is ready for a clean 94-session run.",
-  "next_expected_experiment": "phase6_sequential_hybrid_full_v1"
+  "state": "RESULT",
+  "experiment": "phase6_sequential_hybrid_full_v1",
+  "summary": {
+    "baseline": "Sequential",
+    "experiment": "phase6_sequential_hybrid_full_v1",
+    "run_version": "sequential_hybrid_full_v1",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "requested_sessions": 94,
+    "successful_sessions": 94,
+    "failed_sessions": 0,
+    "users_in_successful_sessions": 20,
+    "method_inputs": "chronological_purchase_titles_and_frozen_candidate_titles_only",
+    "output_protocol": {
+      "primary": "direct_complete_numbered_candidate_ranking",
+      "fallback_condition": "strict_direct_parser_failure_only",
+      "fallback": "fresh_sequential_candidate_rank_map_request",
+      "invalid_primary_shown_to_fallback": false,
+      "max_fallback_requests_per_session": 1,
+      "deterministic_post_generation_repair": false
+    },
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "direct_structured_output": "complete_numbered_candidate_ranking_json_schema",
+      "fallback_structured_output": "complete_candidate_rank_map_json_schema"
+    },
+    "protocol_counts": {
+      "direct_primary_successes": 94,
+      "fallback_attempts": 0,
+      "fallback_successes": 0
+    },
+    "ndcg": {
+      "1": 0.07833333333333334,
+      "5": 0.19119338415282436,
+      "10": 0.22985864604036338,
+      "20": 0.3732857741554989
+    },
+    "usage_totals_all_requests": {
+      "prompt_tokens": 56233,
+      "completion_tokens": 4392,
+      "total_tokens": 60625,
+      "request_count": 94,
+      "mean_prompt_tokens": 598.2234042553191,
+      "max_prompt_tokens": 792,
+      "mean_completion_tokens": 46.723404255319146
+    },
+    "latency": {
+      "total_request_seconds": 128.73904609999772,
+      "mean_request_seconds": 1.3695643202127417,
+      "mean_session_seconds": 1.3697092861701994,
+      "median_session_seconds": 1.3390623499999492
+    },
+    "status": "PASS"
+  },
+  "fallback_rows": [],
+  "errors": []
 }
