@@ -1,5 +1,46 @@
 {
-  "state": "READY",
-  "message": "Runtime candidate 1024/512/1 was reviewed and rejected. Restore 512/256/1 and run the clean homogeneous Phase 3 extractor into outputs/phase3_review_extractor_final/.",
-  "next_expected_experiment": "phase3_review_extractor_clean_final"
+  "state": "RESULT",
+  "experiment": "phase3_review_extractor",
+  "summary": {
+    "component": "Review Extractor",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "required_unique_extractions": 134,
+    "requested_extractions": 134,
+    "successful_extractions": 133,
+    "failed_extractions": 1,
+    "users_in_successful_extractions": 20,
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "evidence_backed_json_schema",
+      "grounding_validation": "entry_level_verbatim_evidence_filter"
+    },
+    "extracted_entry_counts": {
+      "likes": 233,
+      "dislikes": 93,
+      "key_features": 149
+    },
+    "rejected_unsupported_entries": 48,
+    "usage_totals": {
+      "prompt_tokens": 73658,
+      "completion_tokens": 21942,
+      "total_tokens": 95600
+    },
+    "latency": {
+      "total_seconds": 513.1175204000174,
+      "mean_seconds": 3.8580264691730632
+    },
+    "status": "INCOMPLETE"
+  },
+  "pilot_rows": [],
+  "errors": [
+    {
+      "task_id": "A2BFIYZYNK54QX:12",
+      "error": "Review Extractor response contains invalid JSON: Expecting ',' delimiter: line 40 column 6 (char 2020)",
+      "raw_response": "{\n  \"likes\": [\n    {\n      \"value\": \"fun and addictive gameplay\",\n      \"evidence\": \"Extremely fun and addictive gameplay\"\n    },\n    {\n      \"value\": \"fantastic voice acting\",\n      \"evidence\": \"fantastic voice acting\"\n    },\n    {\n      \"value\": \"great graphics\",\n      \"evidence\": \"great graphics\"\n    },\n    {\n      \"value\": \"incredibly compelling storytelling\",\n      \"evidence\": \"incredibly compelling storytelling\"\n    },\n    {\n      \"value\": \"refreshing gameplay experience\",\n      \"evidence\": \"I found this to be incredibly refreshing because too often is Batman presented as a force of nature frightening the forces of evil, and not enough as one of the world's greatest detective.\"\n    },\n    {\n      \"value\": \"haunting mythology\",\n      \"evidence\": \"the mythology at work at the first meeting of these two characters is more haunting than anything in either of the previous games\"\n    }\n  ],\n  \"dislikes\": [\n    {\n      \"value\": \"frame-rate speeds and sound and graphics glitches\",\n      \"evidence\": \"That is not the experience I had while playing this game, so I don't know why people are complaining about that.\"\n    },\n    {\n      \"value\": \"too familiar gameplay\",\n      \"evidence\": \"This game seems a little too familiar. It's an open world game much like ARKHAM CITY where you travel around Gotham, beating the snot out of criminals, and confronting big bosses, and you have your side-quests where you destroy drug shipments, stop huge criminal turf-wars as they break out, and search for Riddler clues.\"\n    },\n    {\n      \"value\": \"lack of character switching\",\n      \"evidence\": \"The addition of Catwoman to the gameplay of ARKHAM CITY was very inspired and gave you some time to explore this open world as a different character. And while the pre-order bonus offered by every shop was \\\"Play as Deathstroke\\\", it's, at this time, only in the challenge modes, where I was hoping that it would give you the opportunity to play as a villain, or at least as an antihero in the open city gameplay.\"\n    },\n    {\n      \"value\": \"endless Enigma collecting\",\n      \"evidence\": \"This was something that was trying my patience in both of the other games, but at least there, there was some riddle-solving,"
+    }
+  ]
 }
