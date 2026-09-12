@@ -6,10 +6,10 @@ This stage reproduces **STEP 1: Extract User Representation** from PURE before i
 ## Paper-derived behavior
 The PURE paper's Algorithm 1 applies the Review Extractor to the incoming review at each time step. The output representation contains likes, dislikes, and key features; this representation is later concatenated with the prior user profile and passed to the Profile Updater. The paper's Step-1 prompt supplies ASINs, product names, and input reviews in chronological order, and the implementation section reports JSON-schema structured output.
 
-The paper does not publish its exact machine-readable schema or an exact evidence-validation mechanism.
+The paper does not publish its exact machine-readable schema or an exact evidence-validation/post-processing mechanism.
 
 ## Incremental and leakage-safe policy
-For a frozen recommendation session targeting purchase position `t`, only information observed through `t-1` may be used. Therefore a review is never extracted before its purchase occurs, each canonical review is extracted once per accepted extractor version, historical extraction may be reused in later sessions, and the target review is never available when predicting that same target.
+For a frozen recommendation session targeting purchase position `t`, only information observed through `t-1` may be used. A review is never extracted before its purchase occurs, historical extraction may be reused in later sessions, and the target review is never available when predicting that same target.
 
 The 94 frozen sessions require 134 unique historical review extractions.
 
@@ -18,19 +18,10 @@ Each call processes one canonical incoming interaction, matching Algorithm 1's i
 
 ASIN, title, and review follow the paper's Step-1 description. Rating is included as an explicit reproduction interpretation because Figure 1 states that PURE incorporates ratings. Metadata remains context only; it is not accepted as independent evidence for a profile entry.
 
-## Evidence-backed v4 output
-Pilots v1/v2 showed that prompt-only grounding could still copy title-only attributes. Pilot v3 solved that leakage by requiring every generated string to be an exact review span, but it also rejected a semantically valid paraphrase (`breathing LEDs`) whose source review said the LEDs can `breathe`.
+## Evidence-backed output
+Pilots v1/v2 showed title leakage. Pilot v3 used exact-review-span outputs and became too restrictive for legitimate paraphrases. Pilot v4 separated model interpretation from exact evidence, but the derivative local model still fabricated one evidence span from the visible product title.
 
-Pilot v4 therefore separates interpretation from evidence. Each category contains objects of the form:
-
-```json
-{
-  "value": "breathing LEDs",
-  "evidence": "LEDs either breathe"
-}
-```
-
-The full logical structure is:
+The logical model output therefore remains evidence-backed:
 
 ```json
 {
@@ -42,15 +33,24 @@ The full logical structure is:
 
 Rules:
 - `value` may be a concise faithful paraphrase/normalization;
-- `evidence` must be a short contiguous verbatim span from the source review;
-- the parser validates every evidence span after case/whitespace normalization;
-- title-only or outside-review evidence is rejected;
-- unsupported categories remain empty;
-- no semantic repair, inferred evidence, category migration, or deduplication is performed.
+- `evidence` is intended to be a short contiguous verbatim span from the source review;
+- the model's `value` field is retained for audit only;
+- downstream profile input uses only validated review evidence strings;
+- redundancy/conflict handling remains the responsibility of Profile Updater.
 
-For downstream profile construction, the stored safe extraction uses the **verbatim evidence strings**. The model's `value` field is retained separately for audit/inspection only. Redundancy and conflict resolution remain the responsibility of Profile Updater.
+## Pilot v5 grounding policy: entry-level conservative filtering
+Pilot v4 demonstrated that one unsupported evidence item should not discard other valid review-grounded entries from the same otherwise-usable response.
 
-This exact schema/evidence mechanism is a reproduction engineering choice because the paper does not publish its JSON schema.
+Pilot v5 therefore validates each generated entry independently:
+
+1. structural/schema violations still fail the entire response;
+2. each `evidence` string is checked against the canonical review after case/whitespace normalization;
+3. grounded entries are accepted unchanged;
+4. unsupported entries are rejected individually and logged with field, value, evidence, and reason;
+5. rejected entries are never rewritten, inferred, replaced, or silently moved to another category;
+6. only accepted evidence can enter the downstream-safe profile representation.
+
+This is conservative filtering rather than semantic repair. It is an explicit reproduction engineering choice for the active local derivative model because the paper does not publish an exact grounding validator.
 
 ## Frozen experimental basis
 - Dataset: Amazon Review Data 2018 / Video Games 5-core
@@ -73,30 +73,31 @@ Technical PASS, but title-only attributes were copied into `key_features` for th
 Technical PASS, but stronger prompt-only grounding still allowed title-derived attributes. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`.
 
 ### Pilot v3
-Mechanical verbatim grounding blocked title leakage, but was too strict and rejected a legitimate paraphrase (`breathing LEDs`). See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`.
+Mechanical verbatim grounding blocked title leakage but rejected a legitimate paraphrase. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`.
 
-### Pilot v4 gate
-Pilot v4 reruns the same first three reviews with the same model/generation/runtime settings using the evidence-backed schema.
+### Pilot v4
+Evidence-backed schema worked for the first review, but Review 2 included an unsupported title-derived evidence claim (`rainbow backlit wired gaming keyboard mouse combo`). The deterministic validator caught it and fail-fast stopped before Review 3. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`.
+
+### Pilot v5 gate
+Pilot v5 reruns the same first three reviews with the same model/generation/runtime settings and entry-level conservative evidence filtering.
 
 Output directory:
 
-`outputs/phase3_review_extractor_v4/`
+`outputs/phase3_review_extractor_v5/`
 
 Checked-in settings:
 - `max_extractions = 3`
 - `resume = true`
 - `fail_fast = true`
 
-Pilot v4 is accepted only if all three calls are schema-valid, every evidence field passes exact review-span validation, no title-only attribute can enter the safe extraction, category assignment is reasonable, and no future/target review leakage occurs.
+Pilot v5 is accepted if all three responses are structurally valid, all profile-safe stored entries are review-grounded, any unsupported generated entries are explicitly logged/rejected, no title-only content survives into the safe extraction, and category assignment is qualitatively reasonable.
 
-After a clean pilot, `max_extractions` can be changed to `0` and `fail_fast` to `false` for all 134 required historical reviews.
+After a clean v5 pilot, `max_extractions` can be changed to `0` and `fail_fast` to `false` for all 134 required historical reviews.
 
 ## Automatic experiment handoff
-The runner publishes a compact result/error payload to:
+The runner publishes a compact result/error payload to `handoff/latest.json` and automatically commits/pushes only that path. This removes the need to paste long terminal outputs into chat. Full experiment artifacts remain local under ignored `outputs/` directories.
 
-`handoff/latest.json`
-
-and automatically commits/pushes only that path. This removes the need to paste long terminal outputs into chat. The handoff mechanism is documented in `docs/EXPERIMENT_HANDOFF.md`. Full experiment artifacts remain local under ignored `outputs/` directories.
+After ChatGPT reads a handoff, durable findings are recorded in project docs and the mailbox is reset to `READY` for the next run. See `docs/EXPERIMENT_HANDOFF.md`.
 
 ## Relevant files
 - `config/phase3_review_extractor.toml`
@@ -109,7 +110,8 @@ and automatically commits/pushes only that path. This removes the need to paste 
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`
+- `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V4.md`
 - `docs/EXPERIMENT_HANDOFF.md`
 
 ## Local outputs
-Historical pilot outputs remain untracked under v1-v4 output directories. Each accepted run writes `extractions.jsonl` and `summary.json` locally.
+Historical pilot outputs remain untracked under v1-v5 output directories. Each run writes `extractions.jsonl` and `summary.json` locally.
