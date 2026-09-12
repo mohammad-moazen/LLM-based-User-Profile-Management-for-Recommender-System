@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor is now PASS / FROZEN at 134/134 successful extractions. Next: benchmark safe throughput improvements, then implement Profile Updater. Automatic Git handoff is active.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor is PASS / FROZEN at 134/134 successful extractions. Runtime-throughput optimization is now in diagnostic mode: the first same-profile benchmark showed non-bit-exact output repeatability, so same-profile repeatability must be characterized before any loader setting is changed. Automatic Git handoff is active.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -157,12 +157,26 @@ Fatal wrapper-level exceptions can be run through safe wrappers that publish the
 The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile was finalized. Keep them as historical/frozen results. Before the final thesis comparison table, rerun compared methods under the same finalized runtime profile.
 
 ## Performance note
-The frozen Review Extractor provides a real throughput baseline: **3.920 seconds per extraction** and **~8.76 minutes total model-call latency for 134 successful extractions**. Performance tuning must be benchmarked separately and must not change model identity, context length, prompt semantics, output schema, K/V quantization, or accepted scientific outputs.
+The frozen Review Extractor provides a real throughput baseline: **3.920 seconds per extraction** and **~8.76 minutes total model-call latency for 134 successful extractions**.
 
-Preferred safe tuning order:
-1. benchmark larger evaluation/physical batch sizes while keeping concurrency at 1;
-2. only then benchmark concurrency 2 separately if memory remains stable;
-3. do not alter context length, prompt content, model quantization, or K/V cache quantization merely for speed.
+### First throughput replay — unchanged profile
+A 12-task diagnostic replay was run under the unchanged `512 / 256 / concurrency 1` loader profile:
+- mean latency: 3.997 s
+- median latency: 3.581 s
+- historical selected-task mean: 3.675 s
+- this replay was ~8.8% slower than the historical selected-task mean
+- exact profile matches vs frozen extraction: 8/12 (66.7%)
+- private RAM delta: +0.004 GB
+- working-set RAM delta: +0.004 GB
+
+The key result is the 8/12 exact-match rate despite unchanged model, prompt, seed, schema, and loader settings. Therefore exact output equality is not a valid standalone quality gate for runtime tuning. The active local runtime exhibits meaningful same-profile generation variability even at temperature 0 with the configured seed.
+
+Detailed record: `docs/RUNTIME_THROUGHPUT_BASELINE.md`.
+
+### Required next diagnostic
+Before changing LM Studio batch/concurrency settings, measure same-profile repeatability over repeated passes of the same 12 tasks. The new `scripts/benchmark_runtime_repeatability.py` reports strict exact equality plus deterministic lexical Jaccard overlap against frozen outputs and between repeated passes. This establishes natural variation first; only then can a faster loader profile be judged fairly.
+
+Do not change context length, model identity/quantization, prompt content, K/V cache quantization, or other scientific inputs for speed.
 
 ## Current implementation status
 Completed:
@@ -175,14 +189,19 @@ Completed:
 - full Review Extractor run and resume-only retry
 - Review Extractor 134/134 PASS / FROZEN
 - automatic Git experiment-handoff channel and safe traceback wrapper
+- first unchanged-profile throughput replay
+- same-profile repeatability benchmark implementation
 
 ## Next actions
-1. Benchmark safe runtime throughput improvements without changing the frozen scientific protocol.
-2. Select/document a faster runtime profile only if memory remains stable and output behavior remains compatible.
-3. Implement Profile Updater using only frozen accepted Review Extractor evidence.
-4. Pilot Profile Updater chronologically with no future leakage.
-5. Implement PURE recommender and evaluate on the frozen 94 sessions.
-6. Rerun compared baselines under the finalized runtime profile before the final thesis comparison table.
+1. Keep LM Studio on the current `Evaluation Batch 512 / Physical Batch 256 / Max Concurrent 1` profile.
+2. Run the 3-pass same-profile repeatability benchmark over the same 12 tasks.
+3. Use exact-pair repeatability and lexical Jaccard to quantify natural generation variance.
+4. Only after that baseline is known, benchmark larger evaluation/physical batch sizes while keeping concurrency at 1.
+5. Select/document a faster runtime profile only if memory remains stable and output behavior stays within the observed same-profile variability envelope.
+6. Implement Profile Updater using only frozen accepted Review Extractor evidence.
+7. Pilot Profile Updater chronologically with no future leakage.
+8. Implement PURE recommender and evaluate on the frozen 94 sessions.
+9. Rerun compared baselines under the finalized runtime profile before the final thesis comparison table.
 
 ## Working rule
 This file is the authoritative current snapshot. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
