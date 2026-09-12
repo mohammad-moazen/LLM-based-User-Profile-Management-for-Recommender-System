@@ -1,61 +1,11 @@
 {
-  "state": "RESULT",
-  "experiment": "phase6_icl_hybrid_full_v1",
-  "summary": {
-    "baseline": "ICL",
-    "experiment": "phase6_icl_hybrid_full_v1",
-    "run_version": "icl_hybrid_full_v1",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "frozen_sessions": 94,
-    "requested_sessions": 94,
-    "successful_sessions": 94,
-    "failed_sessions": 0,
-    "users_in_successful_sessions": 20,
-    "method_inputs": "earlier_purchase_titles_through_t_minus_2_plus_t_minus_1_demonstrated_purchase_and_frozen_candidate_titles",
-    "output_protocol": {
-      "primary": "direct_complete_numbered_candidate_ranking",
-      "fallback_condition": "strict_direct_parser_failure_only",
-      "fallback": "fresh_icl_candidate_rank_map_request",
-      "invalid_primary_shown_to_fallback": false,
-      "max_fallback_requests_per_session": 1,
-      "deterministic_post_generation_repair": false
-    },
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 512,
-      "seed": 42,
-      "direct_structured_output": "complete_numbered_candidate_ranking_json_schema",
-      "fallback_structured_output": "complete_candidate_rank_map_json_schema"
-    },
-    "protocol_counts": {
-      "direct_primary_successes": 94,
-      "fallback_attempts": 0,
-      "fallback_successes": 0
-    },
-    "ndcg": {
-      "1": 0.06166666666666667,
-      "5": 0.184046153450114,
-      "10": 0.24444677165894083,
-      "20": 0.3687308921232335
-    },
-    "usage_totals_all_requests": {
-      "prompt_tokens": 62575,
-      "completion_tokens": 4334,
-      "total_tokens": 66909,
-      "request_count": 94,
-      "mean_prompt_tokens": 665.6914893617021,
-      "max_prompt_tokens": 874,
-      "mean_completion_tokens": 46.1063829787234
-    },
-    "latency": {
-      "total_request_seconds": 100.29218599999967,
-      "mean_request_seconds": 1.0669381489361667,
-      "mean_session_seconds": 1.0671091031914195,
-      "median_session_seconds": 1.0500943499996538
-    },
-    "status": "PASS"
+  "state": "COMPLETE",
+  "message": "Phase 6 final controlled comparison is complete and frozen. No further model run is required for the core reproduction pipeline.",
+  "final_comparison": {
+    "Sequential": {"ndcg@1": 0.07833333333333334, "ndcg@5": 0.19119338415282436, "ndcg@10": 0.22985864604036338, "ndcg@20": 0.3732857741554989},
+    "Recency-Focused": {"ndcg@1": 0.095, "ndcg@5": 0.20650509939667167, "ndcg@10": 0.25295161727915483, "ndcg@20": 0.3857992031968749},
+    "ICL": {"ndcg@1": 0.06166666666666667, "ndcg@5": 0.184046153450114, "ndcg@10": 0.24444677165894083, "ndcg@20": 0.3687308921232335},
+    "PURE": {"ndcg@1": 0.10425070028011205, "ndcg@5": 0.24355349242822116, "ndcg@10": 0.3183764185292945, "ndcg@20": 0.4160225252419735}
   },
-  "fallback_rows": [],
-  "errors": []
+  "next_stage": "thesis_analysis_and_writing"
 }
