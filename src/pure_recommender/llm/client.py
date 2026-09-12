@@ -105,8 +105,15 @@ class OpenAICompatibleLLMClient:
         temperature: float = 0.0,
         max_tokens: int = 32,
         seed: int | None = None,
+        response_format: Mapping[str, Any] | None = None,
     ) -> LLMResponse:
-        """Send one non-streaming chat-completion request."""
+        """Send one non-streaming chat-completion request.
+
+        ``response_format`` is passed through unchanged at the top level of the
+        OpenAI-compatible request. This keeps the client backend-agnostic while
+        allowing components such as PURE's Review Extractor to request a JSON
+        Schema structured output when the local runtime supports it.
+        """
 
         request_payload: dict[str, Any] = {
             "model": model,
@@ -117,6 +124,8 @@ class OpenAICompatibleLLMClient:
         }
         if seed is not None:
             request_payload["seed"] = seed
+        if response_format is not None:
+            request_payload["response_format"] = dict(response_format)
 
         payload = self._request_json("POST", "chat/completions", request_payload)
         choices = payload.get("choices")
