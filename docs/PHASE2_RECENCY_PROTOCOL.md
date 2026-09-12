@@ -1,5 +1,8 @@
 # Phase 2 Recency-Focused Baseline Protocol
 
+## Status
+**PASS / FROZEN** for the 20-user / 94-session Video Games pilot.
+
 ## Paper-derived behavior
 The PURE paper defines **Recency-Focused** as the Sequential prompt plus an instruction that emphasizes the most recently purchased item at time step `t-1`. The paper gives the additional instruction conceptually as:
 
@@ -34,28 +37,23 @@ This preserves the same output interface that completed all 94 Sequential sessio
 - NDCG cutoffs: 1, 5, 10, 20
 - aggregation: sessions within user first, then users
 
-## Real-data pilot result
-The first 3 frozen sessions completed successfully under the Recency-Focused prompt:
-- successful sessions: 3
+## Validation sequence completed
+1. First 3 frozen real sessions: 3/3 valid rankings, PASS.
+2. Full run enabled with `max_sessions = 0`, resume, and non-fail-fast execution.
+3. All 94 frozen sessions completed with valid rankings and zero failures.
+4. Final result frozen in `docs/PHASE2_RECENCY_RESULTS.md`.
+
+## Final frozen result
+- successful sessions: 94
 - failed sessions: 0
-- users represented: 2
-- NDCG@1: 0.250000
-- NDCG@5: 0.250000
-- NDCG@10: 0.250000
-- NDCG@20: 0.443641
-- total reported tokens: 2,085
-- mean latency: 1.399 seconds/session
+- users: 20
+- NDCG@1: 0.078333
+- NDCG@5: 0.199726
+- NDCG@10: 0.239947
+- NDCG@20: 0.378652
+- total reported tokens: 64,677
+- mean latency: 1.394 seconds/session
 - status: PASS
-
-These values are retained as a prompt/output validation pilot only. Three sessions are too small for a substantive performance conclusion or comparison with the frozen Sequential result.
-
-## Full-run sequence
-The pilot gate is satisfied. Checked-in configuration now uses:
-- `max_sessions = 0` to request all 94 frozen sessions;
-- `resume = true` so the 3 successful pilot sessions are skipped;
-- `fail_fast = false` so one malformed response does not discard progress on other sessions.
-
-A full Recency-Focused result is frozen only when all 94 requested sessions have valid rankings and the final summary reports `PASS`.
 
 ## Relevant files
 - `config/phase2_recency.toml`
@@ -63,6 +61,7 @@ A full Recency-Focused result is frozen only when all 94 requested sessions have
 - `scripts/run_phase2_recency.py`
 - `tests/test_recency_baseline.py`
 - shared parser/evaluation from the validated Sequential implementation
+- `docs/PHASE2_RECENCY_RESULTS.md`
 
 ## Output artifacts
 Local-only outputs are written to:
@@ -72,3 +71,5 @@ Local-only outputs are written to:
 Expected files:
 - `results.jsonl`
 - `summary.json`
+
+Next purchased-item baseline: **In-Context Learning (ICL)**.
