@@ -1,16 +1,16 @@
 # Phase 4 PURE Profile Updater Protocol
 
 ## Purpose
-This phase reproduces **STEP 2: Update User Profile** from PURE after the Review Extractor has been frozen. The updater maintains a compact evolving profile across chronological interactions and is validated before the final PURE recommender is implemented.
+This phase reproduces **STEP 2: Update User Profile** from PURE after the Review Extractor has been frozen. The updater maintains an evolving profile across chronological interactions and is validated before the final PURE recommender is implemented.
 
 ## Paper-derived behavior
-Algorithm 1 first concatenates the previous profile with the newly extracted representation independently for likes, dislikes, and key features. The Profile Updater then removes redundancy and conflicts to produce the new profile.
+Algorithm 1 concatenates the previous profile with the newly extracted representation independently for likes, dislikes, and key features. The Profile Updater then removes redundant/overlapping information and resolves conflicts to produce the new profile.
 
 Published updater prompt template:
 
 > You are given a list: {list}. Update this list by removing redundant or overlapping information. Note that crucial information should be preserved.
 
-The paper also states that the updater refines newly extracted representations by eliminating redundancies and resolving conflicts with the existing profile so the profile remains compact and coherent.
+The paper does not publish the exact machine-readable schema, deletion validator, or conflict-resolution/post-processing implementation.
 
 ## Chronological/no-leakage policy
 For interaction position `t`:
@@ -21,124 +21,147 @@ For interaction position `t`:
 
 For a recommendation target at position `t+1`, only `P_t` is eligible. The target review is never visible before that target purchase.
 
-## Final Review Extractor source
+## Frozen Review Extractor source
 Only the homogeneous final artifact is allowed:
 
 `outputs/phase3_review_extractor_final_1024/extractions.jsonl`
 
-The historical v5 artifact and the 133/134 clean attempt are retained for audit but are not downstream inputs.
+Historical extractor artifacts remain audit/development records and are not Phase 4 inputs.
 
-## Reproduction choice and validation evolution
-The paper publishes the natural-language updater prompt but not its exact JSON schema or post-processing/deletion validator. This project therefore uses conservative engineering safeguards and labels them explicitly as reproduction choices.
+## Reproduction safeguards
+The profile must remain grounded in accepted Review Extractor evidence. The updater cannot introduce unsupported preference text.
 
-The profile always remains grounded in accepted Review Extractor evidence. New unsupported preference text is never allowed into the downstream profile.
-
-### Pilot v1 contract
-The model returned exact same-category input strings. This prevented hallucinated new text, but the model still removed a unique non-conflicting entry simply while compacting the profile.
-
-### Pilot v2 contract
-The same exact-subset validator was retained and the prompt was strengthened to preserve unique evidence by default. Pilot v2 showed two remaining problems:
-- arbitrary deletion of unrelated unique evidence still occurred;
-- copying long evidence strings in the response caused a small rewrite, which the strict parser correctly rejected.
-
-Detailed result: `docs/PHASE4_PROFILE_UPDATER_PILOT_V2.md`.
-
-## Pilot v3 contract: ID selection + deterministic retention guard
-Pilot v3 keeps the paper-derived LLM updater step but separates semantic selection from mechanical safety.
-
-### Stable entry IDs
-Each concatenated same-category entry receives a deterministic ID:
+### Stable same-category entry IDs
+Each concatenated entry receives a deterministic category-scoped ID:
 - likes: `L001`, `L002`, ...
 - dislikes: `D001`, `D002`, ...
 - key features: `K001`, `K002`, ...
 
-The prompt still displays each ID together with the exact evidence string, but the structured response contains IDs only. The dynamic JSON schema limits each category to its own valid IDs. The parser rejects unknown IDs, cross-category IDs, duplicates, or malformed output.
+The prompt displays the ID together with the exact evidence string, but the model returns IDs only. The dynamic JSON schema restricts each category to its own valid IDs. Unknown IDs, cross-category IDs, duplicate IDs, malformed structures, and invalid JSON are rejected.
 
-This removes text-copy drift: the model can select evidence but cannot rewrite it.
+This design prevents text-copy drift while preserving an LLM decision step.
 
-### Deterministic retention guard
-After the model selects IDs, every omitted unique string is checked mechanically. A model-requested deletion is permitted only when a retained same-category string has **clear lexical overlap** with the omitted string. The guard recognizes conservative cases such as:
-- exact normalized duplicates;
-- direct normalized string containment;
-- strong token-set containment with sufficient shared content.
+## Accepted v4 information-preserving guard
+Pilot v3 showed that symmetric lexical-overlap detection was not sufficient: the model could retain a shorter overlap and remove a richer sentence. The accepted v4 guard is directional.
 
-If no such retained witness exists, the omitted unique entry is restored automatically. Exact duplicate source strings collapse to one retained occurrence.
+For each same-category omitted entry:
+1. exact duplicate source strings collapse to one occurrence;
+2. an omitted unique string may be deleted only when a retained string has clear lexical overlap **and is strictly more informative**;
+3. if no retained dominator exists, the omitted entry is restored;
+4. after restoration, a deterministic second pass removes any shorter entry strictly dominated by another safe entry.
 
-This means the final profile can remove obvious duplicate/overlap evidence, but prompt-only arbitrary deletion of unique evidence cannot propagate downstream.
+The dominance relation is conservative. A retained candidate must first pass the clear lexical-overlap rule and then either contain the omitted normalized phrase or have a strict content-token superset. Semantic conflict without sufficient lexical evidence is preserved rather than silently deleted.
 
-The guard is intentionally conservative. It is not claimed to reproduce the paper's undisclosed conflict-resolution algorithm exactly. A direct semantic conflict that lacks enough lexical overlap will be preserved rather than silently deleted. This is preferable to unsupported information loss in the thesis-grade reproduction.
+This deterministic guard is an explicit project reproduction choice, not a claim about the paper's undisclosed implementation.
 
 ## Initialization
-The profile begins empty. The first observed extraction is concatenated with this empty profile and passed through the same Profile Updater path as every later interaction. This keeps one uniform update rule instead of introducing a special first-step shortcut.
-
-## Structured output in pilot v3
-For each call, the response has the same three categories but contains valid entry IDs only, for example:
-
-```json
-{
-  "likes": ["L001", "L003"],
-  "dislikes": ["D002"],
-  "key_features": ["K001", "K004"]
-}
-```
-
-The runner records:
-- previous profile;
-- incoming frozen extraction;
-- exact concatenated profile;
-- raw model-selected profile after ID-to-text mapping;
-- entries restored by the deterministic guard;
-- deletions allowed by the guard;
-- final updated profile;
-- final removed entries and counts.
+Each user profile begins empty. The first observed extraction is concatenated with the empty profile and passed through the same updater path as every later interaction.
 
 ## Pilot history
-### Pilot v1 — technical PASS, policy NOT accepted
-- 3/3 successful updates;
-- 0 technical failures;
-- 1,424 total reported tokens;
-- 2.840 s mean latency/update.
+### Pilot v1 — technical PASS / policy rejected
+- 3/3 successful updates
+- 0 technical failures
+- 1,424 reported tokens
+- 2.840 s mean latency/update
 
-At update 2, `Arrived even faster than i expected.` was dropped despite being unique and not clearly redundant, overlapping, or conflicting. Therefore prompt-only deletion behavior was not accepted.
+The model removed a unique non-conflicting entry while compacting the profile. Prompt-only deletion was therefore not accepted.
 
 Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V1.md`.
 
-### Pilot v2 — INCOMPLETE / policy NOT accepted
-Configuration: 2 users × 4 chronological updates, with retention-biased instructions and the exact-subset output contract.
+### Pilot v2 — INCOMPLETE / policy rejected
+- 4 successful updates before fail-fast
+- 1 failed update
+- 2,626 reported tokens across successful updates
+- 2.856 s mean successful-update latency
 
-Observed result before fail-fast stop:
-- 4 successful updates;
-- 1 failed update;
-- 2,626 tokens across successful updates;
-- 2.856 s mean successful-update latency.
-
-The first user still had unrelated unique evidence removed. The first update for the second user failed because the model shortened a key-feature string instead of copying it exactly. Therefore v2 was rejected.
+The model still removed unrelated unique evidence, and one response rewrote a key-feature string. The strict parser correctly rejected the rewrite.
 
 Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V2.md`.
 
-### Pilot v3 — configured
-Pilot v3 keeps the same source, model, runtime, generation settings, and coverage as v2:
-- deterministic 2 eligible users;
-- first 4 chronological updates each;
-- 8 expected updates total;
-- initial profile empty per user;
-- temperature 0.0;
-- seed 42;
-- max output tokens 1024;
-- finalized runtime 512 / 256 / 1;
-- output: `outputs/phase4_profile_updater_pilot_v3/`.
+### Pilot v3 — technical PASS / policy not frozen
+- 8/8 successful updates
+- 0 failures
+- 9 guard-restored entries
+- 1 final removal
+- 5,172 reported tokens
+- 1.612 s mean latency/update
 
-Acceptance requires all 8 updates to complete and the audit to show that final deletions are limited to mechanically defensible exact duplicate/clear-overlap cases after the retention guard.
+ID-only output removed the rewrite failure mode and the guard prevented arbitrary unique-evidence loss. However, the only final overlap removal kept the shorter sentence and deleted the richer sentence, revealing a directional information-loss problem.
+
+Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V3.md`.
+
+### Pilot v4 — PASS / accepted for full-scale validation
+Coverage:
+- 3 deterministic eligible users
+- 5 chronological updates per user
+- 15 expected updates
+
+Observed:
+- 15/15 successful updates
+- 0 failures
+- 51 guard-restored entries
+- 1 final unique overlap removal
+- 10,778 prompt tokens
+- 1,003 completion tokens
+- 11,781 total reported tokens
+- 26.368 s total latency
+- 1.758 s mean latency/update
+
+The sole final removal was information-preserving: the shorter sentence `It has a lot of charm and it is challenging enough.` was removed while the richer sentence `Beautiful game. It has a lot of charm and it is challenging enough.` was retained.
+
+No unrelated unique evidence survived as a deletion after the v4 guard. Pilot v4 is accepted as the policy for the full Phase 4 run.
+
+Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V4.md`.
+
+## Full chronological state-cache run
+The accepted policy is now applied to every successful frozen Phase 3 extraction, not merely a user sample.
+
+Runner:
+- `config/phase4_profile_updater_full.toml`
+- `scripts/run_phase4_profile_updater_full.py`
+- `scripts/run_phase4_profile_updater_full_safe.py`
+
+Expected source workload:
+- 20 users
+- 134 chronological profile updates
+
+The full runner validates that each user's extraction positions form a contiguous prefix `1..max_position`, then writes one safe state after every interaction to:
+
+`outputs/phase4_profile_updater_final_v4/profile_states.jsonl`
+
+The full summary records:
+- successful/failed updates;
+- prefix contiguity;
+- guard restorations and allowed removals;
+- reported token usage and maximum prompt token count;
+- latency;
+- diagnostic entry-count compaction versus exact-unique accumulated extractor evidence.
+
+Entry-count compaction is only a diagnostic. The final recommender stage will measure actual recommendation prompt-token size, which is the closer analogue to the paper's token-efficiency analysis.
+
+## Full-run acceptance criteria
+Phase 4 is frozen only if:
+1. all 134 expected updates succeed;
+2. all user prefixes are contiguous and leakage-safe;
+3. no malformed/unsupported model output enters a profile;
+4. the finalized runtime remains stable;
+5. prompt sizes remain viable under the fixed 8192 context setting;
+6. the resulting state cache can map every frozen recommendation session to the profile immediately preceding its target.
+
+Compression behavior is recorded rather than forced. If the conservative v4 guard yields negligible compaction at full scale, that limitation must be reported explicitly rather than weakening the safety rule silently.
 
 ## Relevant files
-- `config/phase4_profile_updater_pilot.toml`
 - `src/pure_recommender/pure/profile_updater.py`
+- `src/pure_recommender/pure/profile_updater_guard_v4.py`
 - `src/pure_recommender/phase4/config.py`
+- `config/phase4_profile_updater_pilot.toml`
+- `config/phase4_profile_updater_full.toml`
 - `scripts/run_phase4_profile_updater_pilot.py`
-- `scripts/run_phase4_profile_updater_pilot_safe.py`
+- `scripts/run_phase4_profile_updater_pilot_v4_safe.py`
+- `scripts/run_phase4_profile_updater_full.py`
+- `scripts/run_phase4_profile_updater_full_safe.py`
 - `tests/test_profile_updater.py`
 - `docs/PHASE4_PROFILE_UPDATER_PILOT_V1.md`
 - `docs/PHASE4_PROFILE_UPDATER_PILOT_V2.md`
-
-## Next after pilot
-If pilot v3 is accepted, implement the full chronological Profile Updater state cache for all required user prefixes, freeze profile states, then implement the PURE recommender using the latest eligible profile for each of the 94 frozen recommendation sessions.
+- `docs/PHASE4_PROFILE_UPDATER_PILOT_V3.md`
+- `docs/PHASE4_PROFILE_UPDATER_PILOT_V4.md`
