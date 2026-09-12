@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is now validated and stable. Next: review-aware/PURE implementation.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 PURE Review Extractor is implemented and ready for a 3-review real-data pilot.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -46,6 +46,7 @@ Confirmed:
 - localhost proxy interception bug fixed
 - numbered-candidate JSON ranking interface validated across all three full Phase 2 baseline runs
 - 100-request host-memory stability test: PASS
+- generic OpenAI-compatible `response_format` pass-through added for structured JSON Schema output
 
 Active model:
 - `llama-3.2-3b-instruct-uncensored`
@@ -78,17 +79,6 @@ Memory stability result after warm-up and 100 repeated requests:
 Interpretation: stable plateau; no sustained cumulative host-RAM growth observed in the controlled test. No further RAM-saving restriction is currently justified.
 
 Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
-
-## Shared Phase 2 output interface
-After early Sequential formatting failures, the stable interface is:
-- purchase semantics represented with canonical product titles;
-- ASINs hidden from the LLM prompt;
-- candidates rendered as numbered titles (`Candidate 1` ... `Candidate 20`);
-- model output required to be a JSON permutation of candidate numbers 1..20;
-- runner maps ranked numbers back to the unchanged frozen ASIN order;
-- malformed, missing, duplicate, out-of-range, product-name, or ASIN outputs are rejected rather than repaired.
-
-The rejected formatting-debug runs are not included in frozen metrics.
 
 ## Phase 2 frozen purchased-item baselines
 
@@ -127,6 +117,45 @@ The rejected formatting-debug runs are not included in frozen metrics.
 
 Comparison record: `docs/PHASE2_BASELINE_COMPARISON.md`.
 
+## Phase 3 PURE Review Extractor — pilot ready
+Protocol: `docs/PHASE3_REVIEW_EXTRACTOR_PROTOCOL.md`.
+
+Paper-derived component behavior:
+- Algorithm 1 applies the Review Extractor to the incoming review at each time step;
+- extracted representation has three categories: likes, dislikes, key features;
+- Step 1 supplies product/review context and asks the LLM to analyze those three categories;
+- the paper reports JSON-schema structured outputs for reliable automatic processing.
+
+Active reproduction choices are explicit:
+- one canonical incoming interaction is extracted per LLM call, matching the incremental `E(r_t)` algorithm;
+- prompt includes ASIN, canonical title, rating, and review text;
+- rating is included because Figure 1 states that PURE uses ratings, although the published Step-1 text does not list rating as a separate placeholder;
+- exact JSON schema is project-defined because the paper does not publish it;
+- schema keys are `likes`, `dislikes`, and `key_features`, each an array of strings;
+- extractor output is not deduplicated or semantically repaired; redundancy/conflict handling is reserved for Profile Updater;
+- extraction tasks are derived from frozen sessions so a target review is never available before its purchase occurs.
+
+Implemented files:
+- `config/phase3_review_extractor.toml`
+- `src/pure_recommender/pure/review_extractor.py`
+- `src/pure_recommender/phase3/config.py`
+- `src/pure_recommender/phase3/tasks.py`
+- `scripts/run_phase3_review_extractor.py`
+- `tests/test_review_extractor.py`
+- `tests/test_phase3_review_tasks.py`
+
+Initial pilot settings:
+- first 3 unique historical reviews required by the frozen sessions
+- `max_extractions = 3`
+- `resume = true`
+- `fail_fast = true`
+- temperature: 0.0
+- max output tokens: 512
+- generation seed: 42
+- structured output: JSON Schema through the local OpenAI-compatible endpoint
+
+Pilot acceptance requires 3/3 schema-valid outputs plus qualitative inspection that extracted likes/dislikes/key features are grounded in the supplied real review text.
+
 ## Reproducibility note for final comparisons
 The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile above was finalized. Keep them as valid historical/frozen experiment records.
 
@@ -145,15 +174,19 @@ Completed:
 - ICL full 94-session run and freeze
 - frozen comparison of all three purchased-item baselines
 - local runtime memory-stability validation and finalized load profile
+- structured JSON-Schema request support in the local LLM client
+- PURE Review Extractor prompt/schema/parser, leakage-safe task builder, config, runner, tests, and protocol documentation
 
-## Next phase
-Proceed with the review-aware/PURE path in paper order:
-1. Review Extractor (likes, dislikes, key features)
-2. Profile Updater (remove redundancy/overlap/conflicts while preserving crucial information)
-3. PURE recommender using the evolving profile and purchased-item context
-4. Review-aware baseline variants where required for comparison
-5. Pilot on a few frozen sessions, then full 94-session evaluation
-6. Before the final thesis comparison table, rerun all compared methods under the same finalized runtime profile
+## Next actions
+1. Pull the current branch.
+2. Run the full unit-test suite.
+3. Keep LM Studio loaded with the finalized stable runtime profile.
+4. Run `python scripts/run_phase3_review_extractor.py` for the first 3 real review extractions.
+5. Inspect both schema validity and semantic grounding of the three extracted representations.
+6. If the pilot is clean, enable all required unique review extractions with resume.
+7. Freeze the Review Extractor outputs needed by the 94 sessions.
+8. Implement Profile Updater and then the PURE recommender.
+9. Before the final thesis comparison table, rerun all compared methods under the same finalized runtime profile.
 
 ## Working rule
 This file is the authoritative current snapshot. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
