@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor is thesis-grade PASS / FROZEN. Phase 4 Profile Updater pilots v1-v3 have identified and hardened deletion/rewrite failure modes; pilot v4 is ready with an information-preserving directional overlap guard.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor is thesis-grade PASS / FROZEN. Phase 4 Profile Updater pilot v4 passed and is accepted for the full chronological state-cache run. Phase 4 is not frozen until the all-134 run passes.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model results, not exact paper-checkpoint reproduction.
 
@@ -56,55 +56,91 @@ Homogeneous final run:
 Only profile-safe `extraction` strings from this artifact may feed Phase 4.
 
 ## Phase 4 Profile Updater
-Paper behavior: concatenate previous profile with the new extracted likes/dislikes/key-features, then remove redundant/overlapping information while preserving crucial information. The exact JSON schema and deterministic post-processing are not published by the paper, so all safety constraints below are explicit reproduction choices.
+Paper behavior: concatenate previous profile with the new extracted likes/dislikes/key-features, then remove redundant/overlapping information while preserving crucial information. The exact JSON schema and deterministic post-processing are not published by the paper, so the project safeguards below are explicit reproduction choices.
 
-### Pilot v1 — technical PASS / policy rejected
-3/3 updates succeeded, but the model arbitrarily deleted unique non-conflicting evidence.
+### Accepted updater interface
+- profile starts empty for each user;
+- chronological, no-future-leakage updates;
+- source is only the frozen Phase 3 extraction artifact;
+- every entry receives a stable same-category ID (`L...`, `D...`, `K...`);
+- LLM returns IDs only, so it cannot rewrite evidence text;
+- dynamic structured output restricts the response to valid same-category IDs;
+- a deterministic v4 information-preserving guard restores unsupported omissions;
+- exact duplicates may collapse;
+- an overlap deletion is allowed only if another same-category entry strictly dominates it in information content under the conservative lexical rule;
+- a second pass removes a dominated shorter representative if a richer overlap is present;
+- semantic conflicts that cannot be established mechanically are preserved rather than silently deleted.
 
-### Pilot v2 — incomplete / rejected
-The stronger retention prompt still deleted unrelated unique evidence and one update failed because the model rewrote an input string rather than returning an exact allowed string.
+### Pilot history
+- v1: technical PASS, policy rejected because unique evidence was arbitrarily deleted.
+- v2: incomplete/rejected because arbitrary deletion persisted and the model rewrote one evidence string.
+- v3: technical PASS, but symmetric overlap guard allowed the richer sentence to be deleted in favor of a shorter overlap.
 
-### Pilot v3 — technical PASS / policy not frozen
-ID-only structured output removed the string-rewrite failure mode. The model selected stable same-category IDs and a deterministic guard restored unsupported omissions.
+### Pilot v4 — PASS / accepted for full-scale validation
+Coverage: 3 users × 5 chronological updates = 15 updates.
 
-Observed:
-- 8/8 updates successful
-- 0 failures
-- 9 entries restored by guard
-- 1 final removal
-- 5,172 total reported tokens
-- mean latency 1.612 s/update
+Result:
+- successful/failed: 15 / 0
+- guard-restored entries: 51
+- final removed entries: 1
+- total reported tokens: 11,781
+- total latency: 26.368 s
+- mean latency: 1.758 s/update
 
-The remaining defect was directional overlap handling: the one allowed removal deleted the richer sentence `Beautiful game. It has a lot of charm and it is challenging enough.` while retaining the shorter overlapping sentence `It has a lot of charm and it is challenging enough.` Merely detecting overlap was therefore insufficient.
+The only final unique overlap deletion was information-preserving:
+- removed: `It has a lot of charm and it is challenging enough.`
+- retained: `Beautiful game. It has a lot of charm and it is challenging enough.`
 
-Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V3.md`.
+No unrelated unique evidence remained deleted after the v4 guard. The large number of restorations shows that the guard materially changes local-model deletion behavior; this must remain documented.
 
-### Pilot v4 — READY
-Keeps the successful v3 ID-only interface and adds an information-preserving dominance guard:
-- unrelated unique omissions are restored;
-- an omitted overlap can be removed only when a retained entry is strictly more informative;
-- if the model selects a shorter overlap but omits the richer one, the richer entry is restored;
-- a deterministic second pass then removes the dominated shorter representative;
-- no profile text is generated or rewritten by the updater;
-- exact duplicates still collapse safely.
+Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V4.md`.
+Protocol: `docs/PHASE4_PROFILE_UPDATER_PROTOCOL.md`.
 
-Coverage is broadened to 3 deterministic eligible users × 5 chronological updates = 15 expected updates.
+## Phase 4 full chronological run — READY
+The accepted v4 policy is now wired into a full state-cache runner.
 
-Configuration:
-- source: final frozen Phase 3 extractor
-- temperature 0.0
-- seed 42
-- max tokens 1024
-- runtime 512 / 256 / 1
-- output: `outputs/phase4_profile_updater_pilot_v4/`
-- runner: `scripts/run_phase4_profile_updater_pilot_v4_safe.py`
+Source workload expected from frozen Phase 3:
+- 20 users
+- 134 required historical extraction/profile updates
+
+Files:
+- `config/phase4_profile_updater_full.toml`
+- `scripts/run_phase4_profile_updater_full.py`
+- `scripts/run_phase4_profile_updater_full_safe.py`
+
+Output:
+`outputs/phase4_profile_updater_final_v4/profile_states.jsonl`
+
+The runner:
+- validates each user's extraction positions form a contiguous prefix;
+- applies the v4 updater sequentially from an empty profile;
+- stores one profile state after every observed interaction;
+- records guard restorations/removals, token usage, latency, maximum prompt-token usage, and diagnostic entry-count compaction;
+- publishes only a compact summary/error payload through the Git handoff.
+
+The state after interaction position `t` will later be used only for a recommendation target at position `t+1` or later, never for the same purchase's review.
+
+Phase 4 freeze criteria:
+- all 134 updates succeed;
+- prefix-contiguity invariant passes;
+- prompt size remains viable under Context Length 8192;
+- no malformed/unsupported output enters the profile states;
+- states cover every required prefix for all 94 frozen recommendation sessions.
+
+Compression is measured, not forced. Entry-count compression in the full run is diagnostic; the final recommender will measure actual prompt-token size.
+
+## Automatic experiment handoff
+`handoff/latest.json` is a compact mailbox. Experiment runners commit/push only that path and never stage README or unrelated local changes.
 
 ## Next actions
-1. Pull the branch and run the unit tests.
-2. Run `python scripts/run_phase4_profile_updater_pilot_v4_safe.py` with LM Studio unchanged.
-3. Audit all v4 guard restorations and final removals.
-4. If v4 is technically clean and every final removal is information-preserving, freeze the updater policy and implement the full chronological profile-state cache for all required prefixes.
-5. Implement the PURE recommender and evaluate the frozen 94 sessions.
+1. Keep LM Studio on the finalized `512 / 256 / 1` runtime and Context Length 8192.
+2. Pull the branch.
+3. Run the unit tests.
+4. Run `python scripts/run_phase4_profile_updater_full_safe.py`.
+5. Review the full-run summary from the handoff.
+6. If 134/134 passes and state invariants are satisfied, freeze Phase 4.
+7. Implement the final PURE recommender, map each frozen session to its preceding profile state, and evaluate NDCG on all 94 sessions.
+8. Rerun the comparison baselines under the finalized protocol for the thesis comparison table.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
