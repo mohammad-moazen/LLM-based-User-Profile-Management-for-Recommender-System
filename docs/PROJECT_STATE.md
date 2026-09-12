@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilot v1 passed technically but exposed title-only feature extraction; prompt-grounding refinement is implemented and pilot v2 is ready on the same 3 reviews.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilots v1/v2 exposed semantic grounding weaknesses; pilot v3 now adds mechanical verbatim-review validation and is ready on the same 3 reviews.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -120,52 +120,39 @@ Comparison record: `docs/PHASE2_BASELINE_COMPARISON.md`.
 ## Phase 3 PURE Review Extractor
 Protocol: `docs/PHASE3_REVIEW_EXTRACTOR_PROTOCOL.md`.
 
-Paper-derived component behavior:
+Paper-derived behavior:
 - Algorithm 1 applies the Review Extractor to the incoming review at each time step;
-- extracted representation has three categories: likes, dislikes, key features;
-- Step 1 supplies product/review context and asks the LLM to analyze those three categories;
-- the paper reports JSON-schema structured outputs for reliable automatic processing.
+- output representation contains likes, dislikes, and key features;
+- Step 1 supplies ASIN/product/review context;
+- the paper reports JSON-schema structured outputs.
 
-Active reproduction choices are explicit:
-- one canonical incoming interaction is extracted per LLM call, matching the incremental `E(r_t)` algorithm;
+Active reproduction choices:
+- one canonical incoming interaction per LLM call, matching incremental `E(r_t)` behavior;
 - prompt includes ASIN, canonical title, rating, and review text;
-- rating is included because Figure 1 states that PURE uses ratings, although the published Step-1 text does not list rating as a separate placeholder;
+- rating inclusion is an explicit interpretation based on Figure 1;
 - exact JSON schema is project-defined because the paper does not publish it;
-- schema keys are `likes`, `dislikes`, and `key_features`, each an array of strings;
-- extractor output is not deduplicated or semantically repaired; redundancy/conflict handling is reserved for Profile Updater;
-- extraction tasks are derived from frozen sessions so a target review is never available before its purchase occurs;
+- target/future reviews are never extracted early;
 - the 94 frozen sessions require 134 unique historical review extractions.
 
 ### Pilot v1 — technical PASS / semantic refinement required
-The first 3 real review extractions completed successfully:
-- successful extractions: 3
-- failed extractions: 0
-- users represented: 1
-- likes entries: 8
-- dislikes entries: 2
-- key-feature entries: 10
-- total reported tokens: 1,063
-- mean latency: 2.109 seconds
-- schema/transport status: PASS
-
-Qualitative inspection found a semantic issue: for Review 1, `Cherry MX Red switches` and `RGB LED lighting` were copied from the product title although the review text did not discuss them; for Review 2, `backlit keyboard`, `wired connection`, `gaming mouse`, and `white color` were similarly title-derived rather than review-grounded. Review 3 was largely grounded.
-
-This is not out-of-input hallucination because the product title was visible, but it is too weakly grounded for an evolving user-preference profile. Pilot v1 is retained for auditability and is not the accepted extraction set.
+3/3 calls succeeded with schema-valid outputs, but qualitative inspection found title-only features copied into `key_features` for Reviews 1 and 2. This pilot is retained only for auditability.
 
 Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`.
 
-### Pilot v2 — ready
-The extractor prompt now explicitly requires every preference/key-feature entry to be grounded in the review text itself:
-- ASIN/title are identity context only;
-- rating is overall sentiment context only;
-- a title-only attribute must not be extracted unless the review also mentions or clearly describes it;
-- empty arrays are preferred over unsupported entries.
+### Pilot v2 — technical PASS / semantic grounding still insufficient
+The stronger prompt improved grounding but did not fully solve it. In Review 2, `backlit keyboard` and `wired mouse` were still title-derived and unsupported by the review text. Review 1 also showed key-feature entries that mostly duplicated/rephrased the driver-update complaint. Review 3 was largely grounded.
 
-The same 3 reviews will be rerun with unchanged model/generation/runtime settings into a fresh directory:
+Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`.
 
-`outputs/phase3_review_extractor_v2/`
+### Pilot v3 — ready
+Prompt-only grounding is replaced by prompt + mechanical validation:
+- every extracted string must be a short contiguous verbatim span from the review text;
+- the parser validates generated entries against the canonical review after case/whitespace normalization;
+- title-only, inferred, or paraphrased entries are rejected rather than silently filtered;
+- metadata remains visible for paper alignment but cannot become accepted profile evidence unless the same text occurs in the review;
+- output directory is isolated at `outputs/phase3_review_extractor_v3/`.
 
-This prevents resume from reusing v1 results and preserves the original pilot artifacts.
+Pilot v3 remains limited to the same first 3 reviews with `max_extractions = 3`, `resume = true`, and `fail_fast = true`.
 
 ## Reproducibility note for final comparisons
 The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile above was finalized. Keep them as valid historical/frozen experiment records.
@@ -187,16 +174,16 @@ Completed:
 - local runtime memory-stability validation and finalized load profile
 - structured JSON-Schema request support in the local LLM client
 - PURE Review Extractor prompt/schema/parser, leakage-safe task builder, config, runner, tests, and protocol documentation
-- Phase 3 Review Extractor pilot v1 technical run and qualitative inspection
-- review-grounding prompt refinement and isolated pilot-v2 output configuration
+- Phase 3 Review Extractor pilots v1 and v2 with qualitative inspection
+- mechanical verbatim-review grounding validator for pilot v3
 
 ## Next actions
 1. Pull the current branch.
 2. Run the full unit-test suite.
 3. Keep LM Studio loaded with the finalized stable runtime profile.
-4. Run `python scripts/run_phase3_review_extractor.py` for pilot v2 on the same first 3 reviews.
-5. Run `python scripts/inspect_phase3_review_extractor_pilot.py` and verify that title-only features have disappeared unless supported by the review.
-6. If pilot v2 is clean, enable all 134 unique review extractions with resume.
+4. Run `python scripts/run_phase3_review_extractor.py` for pilot v3 on the same first 3 reviews.
+5. Run `python scripts/inspect_phase3_review_extractor_pilot.py` and inspect the accepted verbatim spans.
+6. If pilot v3 is clean, enable all 134 unique review extractions with resume.
 7. Freeze the accepted Review Extractor outputs needed by the 94 sessions.
 8. Implement Profile Updater and then the PURE recommender.
 9. Before the final thesis comparison table, rerun all compared methods under the same finalized runtime profile.
