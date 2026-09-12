@@ -1,15 +1,16 @@
-# PURE Phase 4 Profile Updater pilot configuration.
+# PURE Phase 4 Profile Updater pilot v2 configuration.
 #
-# This pilot consumes only the clean homogeneous final Review Extractor artifact.
-# It updates one user's profile chronologically for the first three observed
-# review extractions, beginning from an empty profile.
+# Pilot v2 keeps the same frozen Review Extractor source and runtime, but uses a
+# retention-biased deletion policy after pilot v1 showed arbitrary removal of a
+# unique non-conflicting entry. Coverage is broadened to two users and four
+# chronological updates per user so removed strings can be audited explicitly.
 
 [input]
 extractions_path = "outputs/phase3_review_extractor_final_1024/extractions.jsonl"
 
 [experiment]
-max_users = 1
-max_updates_per_user = 3
+max_users = 2
+max_updates_per_user = 4
 fail_fast = true
 
 [generation]
@@ -18,4 +19,4 @@ max_tokens = 1024
 seed = 42
 
 [output]
-directory = "outputs/phase4_profile_updater_pilot_v1"
+directory = "outputs/phase4_profile_updater_pilot_v2"
