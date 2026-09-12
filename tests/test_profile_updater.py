@@ -46,13 +46,18 @@ class ProfileUpdaterTests(unittest.TestCase):
             ("precise sensor", "precise sensor", "light weight"),
         )
 
-    def test_prompt_contains_paper_template_and_subset_rules(self):
+    def test_prompt_contains_paper_template_and_retention_rules(self):
         messages, combined = build_profile_updater_messages(self.previous, self.incoming)
         prompt = messages[1]["content"]
+        system_prompt = messages[0]["content"]
         self.assertIn(PAPER_UPDATER_INSTRUCTION, prompt)
         self.assertIn("responsive controls", prompt)
+        self.assertIn("Retain every unique entry by default", prompt)
+        self.assertIn("Do NOT remove a unique non-overlapping, non-conflicting entry", prompt)
+        self.assertIn("if uncertain, preserve both", prompt)
         self.assertIn("Do not paraphrase", prompt)
         self.assertIn("Do not move strings", prompt)
+        self.assertIn("Do not remove a unique non-conflicting entry", system_prompt)
         self.assertEqual(len(messages), 2)
         self.assertEqual(combined.likes[0], "responsive controls")
 
