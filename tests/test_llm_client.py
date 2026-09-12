@@ -20,6 +20,8 @@ from pure_recommender.llm.client import OpenAICompatibleLLMClient
 
 
 class _MockHandler(BaseHTTPRequestHandler):
+    last_request_payload = None
+
     def log_message(self, format, *args):  # noqa: A003 - inherited API name
         return
 
@@ -52,6 +54,7 @@ class _MockHandler(BaseHTTPRequestHandler):
 
         content_length = int(self.headers.get("Content-Length", "0"))
         request_payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+        type(self).last_request_payload = request_payload
         self._write_json(
             {
                 "id": "chatcmpl-test",
@@ -99,6 +102,33 @@ class LLMClientTests(unittest.TestCase):
         self.assertEqual(response.content, "LOCAL_LLM_OK")
         self.assertEqual(response.model, "model-a")
         self.assertEqual(response.usage["total_tokens"], 13)
+
+    def test_chat_completion_forwards_structured_response_format(self):
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "test_schema",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {"value": {"type": "string"}},
+                    "required": ["value"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+        self.client.chat_completion(
+            model="model-a",
+            messages=[{"role": "user", "content": "test structured output"}],
+            temperature=0.0,
+            max_tokens=8,
+            seed=42,
+            response_format=response_format,
+        )
+        self.assertEqual(
+            _MockHandler.last_request_payload["response_format"],
+            response_format,
+        )
 
     def test_local_client_ignores_environment_proxy(self):
         # Regression test for Windows environments where urllib may inherit a
