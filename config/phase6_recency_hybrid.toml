@@ -1,0 +1,23 @@
+# Phase 6B final controlled Recency-Focused baseline rerun.
+#
+# Uses the exact frozen 94 sessions and finalized generation/runtime controls.
+# Method semantics remain Recency-Focused; the hybrid policy changes only the
+# machine-readable output serialization/validation path.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+max_sessions = 0
+resume = false
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase6_recency_hybrid_final_v1"
