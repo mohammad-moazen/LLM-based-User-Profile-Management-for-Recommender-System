@@ -1,9 +1,14 @@
-# Phase 3 PURE Review Extractor — clean homogeneous final-protocol run.
+# Phase 3 PURE Review Extractor — clean homogeneous final-protocol rerun.
 #
-# The historical v5 directory is preserved for audit. This configuration writes
-# a new clean artifact so every one of the 134 required review extractions is
-# generated under the same final prompt/schema/parser and the finalized runtime
-# profile (Evaluation Batch 512 / Physical Batch 256 / Max Concurrent 1).
+# The first clean-final attempt used max_tokens=512 and completed 133/134 tasks.
+# One long structured response was malformed. A single-task diagnostic with the
+# same model/prompt/schema/seed and max_tokens=1024 finished normally (`stop`),
+# parsed successfully, and used 495 completion tokens. Because 495 is close to
+# the former 512-token ceiling, the thesis-grade final artifact is regenerated
+# from scratch with a 1024-token ceiling so every stored task uses one identical
+# generation configuration.
+#
+# Historical v5 and final-attempt-1 directories are preserved for audit.
 
 [input]
 interactions_path = "outputs/phase1/interactions.jsonl.gz"
@@ -12,18 +17,19 @@ sessions_path = "outputs/phase1/sessions.jsonl.gz"
 [experiment]
 # 0 means every unique historical review required by the 94 frozen sessions.
 max_extractions = 0
-# Resume is kept on so an interrupted clean run can continue. The new output
-# directory is initially empty, so the first run still generates all 134 tasks.
+# Resume remains enabled only for interruption recovery inside this NEW output
+# directory. Its first run is clean and starts from zero.
 resume = true
 # Continue past task/API/schema failures and report all failures at the end.
 fail_fast = false
 
 [generation]
 temperature = 0.0
-max_tokens = 512
+max_tokens = 1024
 seed = 42
 
 [output]
-# Do not overwrite the historical development artifact at
-# outputs/phase3_review_extractor_v5/.
-directory = "outputs/phase3_review_extractor_final"
+# Clean homogeneous final artifact. Do not overwrite:
+# - outputs/phase3_review_extractor_v5/
+# - outputs/phase3_review_extractor_final/
+directory = "outputs/phase3_review_extractor_final_1024"
