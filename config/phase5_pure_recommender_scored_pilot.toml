@@ -1,0 +1,24 @@
+# PURE Phase 5 scored-output pilot v2.
+#
+# Direct permutation output passed the 6-session pilot but failed structurally on
+# 2/94 full-run sessions, and a same-seed formatting retry reproduced both
+# malformed arrays. This pilot keeps the recommendation inputs unchanged but
+# serializes the model decision as one required likelihood score per candidate.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+profile_states_path = "outputs/phase4_profile_updater_final_v4/profile_states.jsonl"
+
+[experiment]
+max_sessions = 0
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase5_pure_recommender_scored_pilot_v2"
