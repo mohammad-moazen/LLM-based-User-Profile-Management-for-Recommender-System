@@ -1,10 +1,14 @@
 """Pilot PURE Profile Updater on clean final Review Extractor outputs.
 
-The runner selects deterministic users with enough extracted interactions,
-starts each user from an empty profile, and applies Profile Updater
-chronologically. Pilot v2 uses a retention-biased deletion policy and publishes
-exactly which input strings were removed at every update for qualitative audit.
-Phase 3 artifacts remain untouched.
+Pilot v3 keeps the paper-derived chronological update behavior, but hardens the
+project-defined output contract after v2 exposed two failure modes: arbitrary
+deletion of unrelated unique evidence and model rewriting of an input string.
+
+The model now selects stable same-category entry IDs. A deterministic retention
+guard restores any omitted unique entry unless the omitted string has clear
+lexical overlap with a retained same-category string. This keeps the experiment
+auditable and prevents accidental information loss while still allowing obvious
+duplicate/overlap compaction. Phase 3 artifacts remain untouched.
 """
 
 from __future__ import annotations
@@ -16,7 +20,6 @@ from pathlib import Path
 import statistics
 import sys
 import time
-from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = REPO_ROOT / "src"
@@ -28,6 +31,7 @@ from pure_recommender.llm import OpenAICompatibleLLMClient, load_local_llm_confi
 from pure_recommender.phase4 import load_phase4_config
 from pure_recommender.pure import (
     UserProfile,
+    apply_retention_guard,
     build_profile_updater_messages,
     parse_profile_update,
     profile_updater_response_format,
@@ -76,7 +80,10 @@ def _select_pilot_users(
     for user_id in sorted(by_user):
         user_rows = sorted(
             by_user[user_id],
-            key=lambda row: (int(row.get("interaction_position", 0) or 0), str(row.get("task_id", ""))),
+            key=lambda row: (
+                int(row.get("interaction_position", 0) or 0),
+                str(row.get("task_id", "")),
+            ),
         )
         if len(user_rows) < max_updates_per_user:
             continue
@@ -121,6 +128,17 @@ def _removed_entries(
     return removed
 
 
+def _count_mapping_entries(value: object) -> int:
+    if not isinstance(value, dict):
+        return 0
+    total = 0
+    for field_name in PROFILE_FIELDS:
+        entries = value.get(field_name)
+        if isinstance(entries, list):
+            total += len(entries)
+    return total
+
+
 def _finish_reason(raw: object) -> str | None:
     if not isinstance(raw, dict):
         return None
@@ -142,14 +160,14 @@ def _publish(payload: dict[str, object], status_word: str) -> None:
     ok, message = publish_handoff(
         REPO_ROOT,
         payload,
-        commit_message=f"handoff: phase4 profile updater pilot v2 {status_word.lower()}",
+        commit_message=f"handoff: phase4 profile updater pilot v3 {status_word.lower()}",
         auto_push=True,
     )
     print(f"{'HANDOFF' if ok else 'HANDOFF WARNING'}: {message}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run PURE Phase 4 Profile Updater pilot v2")
+    parser = argparse.ArgumentParser(description="Run PURE Phase 4 Profile Updater pilot v3")
     parser.add_argument(
         "--config",
         default=str(REPO_ROOT / "config" / "phase4_profile_updater_pilot.toml"),
@@ -186,7 +204,6 @@ def main() -> int:
     if results_path.exists():
         results_path.unlink()
 
-    response_format = profile_updater_response_format()
     all_rows: list[dict[str, object]] = []
     latencies: list[float] = []
     total_prompt_tokens = 0
@@ -195,7 +212,7 @@ def main() -> int:
     failures: list[dict[str, object]] = []
 
     print("=" * 96)
-    print("PURE PHASE 4 — PROFILE UPDATER PILOT V2")
+    print("PURE PHASE 4 — PROFILE UPDATER PILOT V3")
     print("=" * 96)
     print(f"Model                 : {llm_config.model}")
     print(f"Extractor artifact    : {config.input.extractions_path}")
@@ -204,8 +221,8 @@ def main() -> int:
     print(f"Temperature           : {config.generation.temperature}")
     print(f"Max output tokens     : {config.generation.max_tokens}")
     print(f"Seed                  : {config.generation.seed}")
-    print("Subset validator      : exact same-category input strings only")
-    print("Deletion policy       : retention-biased; remove only clear redundancy/overlap/conflict")
+    print("Model output          : stable same-category entry IDs only")
+    print("Retention guard       : restore omitted unique entries unless clear lexical overlap")
     print()
 
     final_profiles: dict[str, dict[str, list[str]]] = {}
@@ -220,7 +237,8 @@ def main() -> int:
                     f"Extractor row {extraction_row.get('task_id')} has invalid extraction object"
                 )
 
-            messages, concatenated = build_profile_updater_messages(profile, extraction)
+            messages, concatenated, id_map = build_profile_updater_messages(profile, extraction)
+            response_format = profile_updater_response_format(id_map)
             before_counts = _profile_counts(profile)
             concatenated_counts = _profile_counts(concatenated)
             started = time.perf_counter()
@@ -236,7 +254,15 @@ def main() -> int:
                 )
                 elapsed = time.perf_counter() - started
                 raw_content = response.content
-                updated = parse_profile_update(raw_content, allowed_profile=concatenated)
+                model_selected = parse_profile_update(
+                    raw_content,
+                    allowed_profile=concatenated,
+                    id_map=id_map,
+                )
+                updated, restored_entries, guard_allowed_removals = apply_retention_guard(
+                    model_selected,
+                    allowed_profile=concatenated,
+                )
                 after_counts = _profile_counts(updated)
                 removed_entries = _removed_entries(concatenated, updated)
 
@@ -258,12 +284,17 @@ def main() -> int:
                     "previous_profile": profile.to_dict(),
                     "incoming_extraction": extraction,
                     "concatenated_profile": concatenated.to_dict(),
+                    "model_selected_profile": model_selected.to_dict(),
+                    "guard_restored_entries": restored_entries,
+                    "guard_allowed_removals": guard_allowed_removals,
                     "updated_profile": updated.to_dict(),
                     "removed_entries": removed_entries,
                     "counts": {
                         "previous": before_counts,
                         "concatenated": concatenated_counts,
+                        "model_selected": _profile_counts(model_selected),
                         "updated": after_counts,
+                        "restored_by_guard": _count_mapping_entries(restored_entries),
                         "removed_from_concatenated": (
                             concatenated_counts["total"] - after_counts["total"]
                         ),
@@ -279,13 +310,17 @@ def main() -> int:
 
                 print(
                     f"  update {update_index}: task={extraction_row.get('task_id')}  "
-                    f"concat={concatenated_counts['total']} -> profile={after_counts['total']}  "
+                    f"concat={concatenated_counts['total']} -> model={_profile_counts(model_selected)['total']} "
+                    f"-> safe={after_counts['total']}  "
+                    f"restored={row['counts']['restored_by_guard']}  "
                     f"removed={row['counts']['removed_from_concatenated']}  "
                     f"latency={elapsed:.2f}s"
                 )
                 for field_name in PROFILE_FIELDS:
+                    if restored_entries[field_name]:
+                        print(f"    guard restored {field_name}: {restored_entries[field_name]}")
                     if removed_entries[field_name]:
-                        print(f"    removed {field_name}: {removed_entries[field_name]}")
+                        print(f"    final removed {field_name}: {removed_entries[field_name]}")
             except Exception as exc:
                 elapsed = time.perf_counter() - started
                 error_row: dict[str, object] = {
@@ -321,10 +356,15 @@ def main() -> int:
         for row in successful_rows
         if isinstance(row.get("counts"), dict)
     )
+    total_restored = sum(
+        int(row.get("counts", {}).get("restored_by_guard", 0) or 0)
+        for row in successful_rows
+        if isinstance(row.get("counts"), dict)
+    )
 
     summary: dict[str, object] = {
         "component": "Profile Updater",
-        "pilot_version": "v2",
+        "pilot_version": "v3",
         "model": llm_config.model,
         "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
         "source_extractor_artifact": str(config.input.extractions_path),
@@ -336,10 +376,11 @@ def main() -> int:
             "temperature": config.generation.temperature,
             "max_tokens": config.generation.max_tokens,
             "seed": config.generation.seed,
-            "structured_output": "three_category_subset_json_schema",
+            "structured_output": "dynamic_same_category_entry_id_schema",
         },
-        "validation": "exact_same_category_subset_no_new_text",
-        "deletion_policy": "retain_unique_remove_only_clear_duplicate_overlap_or_conflict",
+        "validation": "same_category_id_selection_plus_deterministic_retention_guard",
+        "deletion_policy": "allow_only_exact_duplicate_or_clear_lexical_overlap_after_guard",
+        "total_guard_restored_entries": total_restored,
         "total_removed_entries_across_updates": total_removed,
         "usage_totals": {
             "prompt_tokens": total_prompt_tokens,
@@ -366,6 +407,9 @@ def main() -> int:
             "previous_profile": row.get("previous_profile"),
             "incoming_extraction": row.get("incoming_extraction"),
             "concatenated_profile": row.get("concatenated_profile"),
+            "model_selected_profile": row.get("model_selected_profile"),
+            "guard_restored_entries": row.get("guard_restored_entries"),
+            "guard_allowed_removals": row.get("guard_allowed_removals"),
             "updated_profile": row.get("updated_profile"),
             "removed_entries": row.get("removed_entries"),
             "counts": row.get("counts"),
@@ -380,7 +424,7 @@ def main() -> int:
     _publish(
         {
             "state": "RESULT",
-            "experiment": "phase4_profile_updater_pilot_v2",
+            "experiment": "phase4_profile_updater_pilot_v3",
             "summary": summary,
             "rows": handoff_rows,
         },
@@ -389,10 +433,11 @@ def main() -> int:
 
     print()
     print("=" * 96)
-    print("PROFILE UPDATER PILOT V2 SUMMARY")
+    print("PROFILE UPDATER PILOT V3 SUMMARY")
     print("=" * 96)
     print(f"successful_updates : {len(successful_rows)}/{expected_updates}")
     print(f"failed_updates     : {len(failures)}")
+    print(f"guard_restored     : {total_restored}")
     print(f"removed_entries    : {total_removed}")
     print(f"total_tokens       : {total_tokens}")
     print(f"mean_latency_sec   : {summary['latency']['mean_seconds']:.3f}")
