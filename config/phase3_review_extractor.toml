@@ -1,0 +1,23 @@
+# Phase 3 PURE Review Extractor pilot configuration.
+#
+# The extractor is incremental: each canonical review is processed only after
+# that purchase has become observable in the continuous recommendation stream.
+
+[input]
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+# First validate structured output and semantic extraction on three real reviews.
+# Use 0 later to process every unique review required by the 94 frozen sessions.
+max_extractions = 3
+resume = true
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase3_review_extractor"
