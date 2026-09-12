@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential full run PASS / FROZEN. Recency-Focused 3-session pilot PASS; full 94-session Recency run is now enabled.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential PASS / FROZEN. Recency-Focused PASS / FROZEN. ICL baseline implemented and ready for a 3-session pilot.**
 
 The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics are therefore labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
@@ -17,6 +17,8 @@ The user has explicitly chosen to continue with the local derivative model `llam
 - Endpoint: `http://127.0.0.1:1234/v1`
 - Backend abstraction: OpenAI-compatible HTTP client
 - Hardware: Intel i7-13700H, 32 GB RAM, NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM
+- Repository workflow: ChatGPT pushes incremental code/docs; user pulls, runs locally, and sends terminal results
+- Do not overwrite the user's local uncommitted README changes
 
 ## Frozen Phase 1
 Dataset: Amazon Review Data 2018 / Video Games 5-core + metadata.
@@ -33,27 +35,39 @@ Frozen real-data result:
 - candidate seed: 42
 - candidate invariants: PASS
 
-The task remains: use chronological history to rank one ground-truth next item among 19 non-interacted negatives. NDCG is averaged within user first, then across users.
+The task is continuous next-item ranking: for every eligible timestep, rank one ground-truth next item among 19 non-interacted negatives. NDCG is averaged across sessions within each user first, then averaged across users.
+
+Frozen preprocessing decisions are documented in `docs/PREPROCESSING_POLICY.md`. These edge-case cleaning rules are reproduction choices, not paper-specified rules.
 
 ## Local LLM status
 Confirmed:
 - `GET /v1/models`: PASS
 - Python chat completion through localhost: PASS
 - localhost proxy interception bug fixed
-- validated numbered-candidate JSON ranking interface works end-to-end
+- numbered-candidate JSON ranking interface validated across complete 94-session runs
 
 Active model:
 - `llama-3.2-3b-instruct-uncensored`
 
 Model policy: `docs/MODEL_RUNTIME_POLICY.md`.
 
-## Phase 2 — purchased-item baselines
-Paper baselines reproduced in order:
+## Phase 2 purchased-item baselines
 1. Sequential — **PASS / FROZEN**
-2. Recency-Focused — **3-session pilot PASS; full run enabled**
-3. ICL — pending
+2. Recency-Focused — **PASS / FROZEN**
+3. In-Context Learning (ICL) — **implemented; 3-session pilot pending**
 
-The paper does not publish every exact prompt/output schema detail, so explicit reproduction choices are documented separately.
+All three baselines reuse the same frozen users, sessions, candidate sets, targets, NDCG implementation, model, temperature, and generation seed. The baseline-specific difference is prompt framing.
+
+## Shared robust output interface
+After two early Sequential formatting failures, the stable interface is:
+- purchase semantics are represented with canonical product titles;
+- ASINs are hidden from the LLM prompt;
+- current candidates are rendered as numbered titles (`Candidate 1` ... `Candidate 20`);
+- model output is a JSON permutation of candidate numbers 1..20;
+- runner maps candidate numbers back to the unchanged frozen candidate ASIN order;
+- missing, duplicate, out-of-range, malformed, product-name, or ASIN outputs are rejected rather than repaired.
+
+The two rejected formatting-debug attempts are not included in any reported NDCG.
 
 ## Sequential baseline — frozen result
 Protocol: `docs/PHASE2_SEQUENTIAL_PROTOCOL.md`
@@ -68,83 +82,82 @@ Final full run:
 - NDCG@5: 0.182577
 - NDCG@10: 0.227799
 - NDCG@20: 0.366378
-- total tokens: 60,669
+- total reported tokens: 60,669
 - mean latency: 1.385 seconds/session
 - status: PASS
 
-Sequential serialization after real-model debugging:
-- history: canonical titles only;
-- candidates: numbered titles only;
-- model output: complete JSON permutation of candidate numbers 1..20;
-- runner maps numbers back to unchanged frozen ASINs;
-- malformed/incomplete/duplicate rankings are rejected, not repaired.
-
-The two early formatting failures are retained as debugging evidence and are not included in the frozen metric.
-
-## Recency-Focused baseline
-Paper-derived distinction: use the Sequential setup but explicitly emphasize the most recently purchased item at time step `t-1`.
+## Recency-Focused baseline — frozen result
+Paper-derived distinction: same Sequential setup, with explicit emphasis on the most recently purchased item at time step `t-1`.
 
 Protocol: `docs/PHASE2_RECENCY_PROTOCOL.md`
 
-Implemented files:
-- `config/phase2_recency.toml`
-- `src/pure_recommender/baselines/recency.py`
-- `scripts/run_phase2_recency.py`
-- `tests/test_recency_baseline.py`
+Result record: `docs/PHASE2_RECENCY_RESULTS.md`
 
-The implementation preserves the exact frozen users, histories, targets, candidate sets, parser, metric, model, and generation settings from Sequential. Its only recommendation-behavior change is explicit recency emphasis in the prompt.
-
-### Validated Recency pilot
-The first 3 frozen sessions completed successfully:
-- successful sessions: 3
+Final full run:
+- successful sessions: 94
 - failed sessions: 0
-- users represented: 2
-- NDCG@1: 0.250000
-- NDCG@5: 0.250000
-- NDCG@10: 0.250000
-- NDCG@20: 0.443641
-- total reported tokens: 2,085
-- mean latency: 1.399 seconds/session
+- users: 20
+- NDCG@1: 0.078333
+- NDCG@5: 0.199726
+- NDCG@10: 0.239947
+- NDCG@20: 0.378652
+- total reported tokens: 64,677
+- mean latency: 1.394 seconds/session
 - status: PASS
 
-These three-session metrics are diagnostic only and are not used as the final Recency performance estimate.
+Recency-Focused minus Sequential:
+- NDCG@1: +0.016666 (~+27.03% relative)
+- NDCG@5: +0.017149 (~+9.39% relative)
+- NDCG@10: +0.012148 (~+5.33% relative)
+- NDCG@20: +0.012274 (~+3.35% relative)
+- total reported tokens: +4,008 (~+6.61%)
+- mean latency: +0.009 seconds/session (~+0.65%)
 
-### Full Recency run configuration
-Checked-in `config/phase2_recency.toml` now uses:
-- `max_sessions = 0` -> all 94 frozen sessions
-- `resume = true` -> the 3 successful pilot sessions are skipped automatically
-- `fail_fast = false` -> one malformed response does not discard progress
+This is a descriptive comparison for the current frozen local derivative-model pilot only.
+
+## ICL baseline — implementation ready
+Paper-derived framing for target timestep `t`:
+- interactions through `t-2` are ordinary earlier history;
+- the purchase at `t-1` is presented as an in-context demonstrated recommendation outcome;
+- the model then ranks the current frozen candidate list for item `t`.
+
+Protocol: `docs/PHASE2_ICL_PROTOCOL.md`
+
+Implemented files:
+- `config/phase2_icl.toml`
+- `src/pure_recommender/baselines/icl.py`
+- `scripts/run_phase2_icl.py`
+- `tests/test_icl_baseline.py`
+
+Initial ICL pilot settings:
+- first 3 frozen sessions
 - temperature: 0.0
 - max output tokens: 512
 - generation seed: 42
-
-Invalid outputs remain excluded from NDCG. Recency is frozen only after all 94 sessions are successful and the summary reports `PASS`.
+- resume: true
+- fail-fast: true
+- output directory: `outputs/phase2_icl/`
 
 ## Current implementation status
 Completed:
-- dataset schema inspection and anomaly analysis
-- preprocessing-policy v1 freeze
-- canonical preprocessing and audit reporting
-- deterministic continuous sessions and candidate sampling
-- NDCG metric and user-first aggregation
-- Phase 1 synthetic and real-data validation
-- local OpenAI-compatible client and proxy-safe transport
-- local inference smoke test
-- robust numbered-candidate output interface
-- Sequential baseline pilot and full 94-session run
-- Sequential result freeze
-- Recency-Focused prompt, config, runner, tests, and protocol documentation
-- Recency-Focused 3-session real-data pilot: PASS
+- dataset schema/anomaly analysis and preprocessing-policy freeze
+- canonical preprocessing and deterministic continuous session generation
+- candidate leakage validation and NDCG/user-first aggregation
+- Phase 1 real-data freeze
+- local OpenAI-compatible client and inference smoke test
+- robust numbered-candidate output serialization
+- Sequential 94-session full run and result freeze
+- Recency-Focused 94-session full run and result freeze
+- ICL prompt builder, config, runner, tests, and protocol documentation
 
 Pending next:
-1. Pull the full-run Recency configuration.
-2. Keep the local model server active.
-3. Run `python scripts/run_phase2_recency.py` across all 94 frozen sessions.
-4. If the summary is `INCOMPLETE`, rerun to retry only failed sessions and investigate persistent failures.
-5. When 94/94 pass, freeze final Recency NDCG@1/@5/@10/@20, token usage, and latency.
-6. Compare frozen Sequential and Recency results.
-7. Implement ICL using the paper's recent-item demonstration setup.
-8. Then begin Review Extractor, Profile Updater, and full PURE.
+1. Pull current ICL implementation.
+2. Run the full unit-test suite.
+3. Run `python scripts/run_phase2_icl.py` for the first 3 frozen sessions.
+4. If 3/3 pass, switch ICL to all 94 sessions with resume and `fail_fast = false`.
+5. Freeze final ICL NDCG@1/@5/@10/@20, token usage, and latency.
+6. Compare Sequential, Recency-Focused, and ICL on the same frozen pilot.
+7. Then implement review-aware baselines and PURE components: Review Extractor, Profile Updater, and full recommender.
 
 ## Working rule
 This file is the authoritative current snapshot. Important experiment results are preserved in dedicated result/protocol documents. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
