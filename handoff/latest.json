@@ -1,28 +1,146 @@
 {
   "state": "RESULT",
-  "experiment": "runtime_profile_reference_capture",
+  "experiment": "runtime_profile_reference_compare",
   "summary": {
-    "experiment": "runtime_profile_reference_capture",
-    "label": "baseline_512_256_1",
-    "reference_path": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\runtime_profile_reference\\current_protocol_reference.json",
+    "experiment": "runtime_profile_reference_compare",
+    "reference_label": "baseline_512_256_1",
+    "candidate_label": "candidate_1024_512_1",
     "sample_count": 12,
-    "mean_latency_seconds": 3.837574316666481,
-    "median_latency_seconds": 3.4000797999979113,
-    "rejected_entries": 4,
-    "total_reported_tokens": 8271,
-    "memory": {
+    "exact_profile_matches": 10,
+    "exact_profile_match_rate": 0.8333333333333334,
+    "mean_jaccard": 0.9095238095238095,
+    "median_jaccard": 1.0,
+    "min_jaccard": 0.2,
+    "reference_mean_latency_seconds": 3.837574316666481,
+    "candidate_mean_latency_seconds": 4.024558841666779,
+    "speedup_vs_reference": 0.9535391250677161,
+    "candidate_rejected_entries": 4,
+    "reference_rejected_entries": 4,
+    "candidate_total_reported_tokens": 8305,
+    "reference_total_reported_tokens": 8271,
+    "candidate_memory": {
       "before": {
         "process_count": 1,
-        "working_set_gb": 6.431610107421875,
-        "private_gb": 12.669044494628906
+        "working_set_gb": 4.005367279052734,
+        "private_gb": 4.809261322021484
       },
       "after": {
         "process_count": 1,
-        "working_set_gb": 6.4117431640625,
-        "private_gb": 12.649127960205078
+        "working_set_gb": 4.711849212646484,
+        "private_gb": 5.519313812255859
       },
-      "private_delta_gb": -0.019916534423828125,
-      "working_set_delta_gb": -0.019866943359375
+      "private_delta_gb": 0.710052490234375,
+      "working_set_delta_gb": 0.70648193359375
     }
-  }
+  },
+  "rows": [
+    {
+      "task_id": "A24ZRTTC3SPX8C:1",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 2.011747700002161,
+      "reference_latency_seconds": 2.038493100000778,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A2JMHVTKWQXMWJ:2",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 4.947812799997337,
+      "reference_latency_seconds": 4.661824000002525,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A3RQZ1J5F5G104:1",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 11.501767599998857,
+      "reference_latency_seconds": 11.178778100002091,
+      "candidate_rejected_entry_count": 4,
+      "reference_rejected_entry_count": 4
+    },
+    {
+      "task_id": "A3RQZ1J5F5G104:13",
+      "exact_profile_match": false,
+      "jaccard": 0.7142857142857143,
+      "candidate_latency_seconds": 6.748305200002505,
+      "reference_latency_seconds": 6.208521299995482,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A2BFIYZYNK54QX:6",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 4.713054800005921,
+      "reference_latency_seconds": 4.563634899997851,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A3IFI14LQ1RRE8:1",
+      "exact_profile_match": false,
+      "jaccard": 0.2,
+      "candidate_latency_seconds": 5.506527899997309,
+      "reference_latency_seconds": 5.338045700002112,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "AHHE2CND22QHE:3",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 1.2991646000009496,
+      "reference_latency_seconds": 1.1897916000016266,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A26C4UAI3IXYF:4",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 1.4594536000004155,
+      "reference_latency_seconds": 1.3996493000013288,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "AE93Q3G5S3OGO:1",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 1.241915999999037,
+      "reference_latency_seconds": 1.0832309999968857,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A30QZOB8GIOBJO:2",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 1.6918342999997549,
+      "reference_latency_seconds": 1.5371213999969768,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A174LCVSHN24BT:6",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 2.4695948000007775,
+      "reference_latency_seconds": 2.2365246999979718,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    },
+    {
+      "task_id": "A1VNZPQGYTZIHJ:5",
+      "exact_profile_match": true,
+      "jaccard": 1.0,
+      "candidate_latency_seconds": 4.703526799996325,
+      "reference_latency_seconds": 4.615276700002141,
+      "candidate_rejected_entry_count": 0,
+      "reference_rejected_entry_count": 0
+    }
+  ]
 }
