@@ -1,9 +1,9 @@
-# Phase 3 PURE Review Extractor full-run configuration.
+# Phase 3 PURE Review Extractor — clean homogeneous final-protocol run.
 #
-# Pilot v5 is accepted. The full run keeps the same evidence-backed schema,
-# prompt, model/generation settings, grounding filter, runtime profile, and
-# output directory. Resume reuses the 3 accepted pilot extractions and processes
-# the remaining required historical reviews.
+# The historical v5 directory is preserved for audit. This configuration writes
+# a new clean artifact so every one of the 134 required review extractions is
+# generated under the same final prompt/schema/parser and the finalized runtime
+# profile (Evaluation Batch 512 / Physical Batch 256 / Max Concurrent 1).
 
 [input]
 interactions_path = "outputs/phase1/interactions.jsonl.gz"
@@ -12,9 +12,10 @@ sessions_path = "outputs/phase1/sessions.jsonl.gz"
 [experiment]
 # 0 means every unique historical review required by the 94 frozen sessions.
 max_extractions = 0
+# Resume is kept on so an interrupted clean run can continue. The new output
+# directory is initially empty, so the first run still generates all 134 tasks.
 resume = true
-# Continue past malformed/API/task failures so the run can finish and report all
-# failures; a later resume run retries only tasks that are not already status=ok.
+# Continue past task/API/schema failures and report all failures at the end.
 fail_fast = false
 
 [generation]
@@ -23,4 +24,6 @@ max_tokens = 512
 seed = 42
 
 [output]
-directory = "outputs/phase3_review_extractor_v5"
+# Do not overwrite the historical development artifact at
+# outputs/phase3_review_extractor_v5/.
+directory = "outputs/phase3_review_extractor_final"
