@@ -1,0 +1,24 @@
+# PURE Phase 5 rank-map pilot v3.
+#
+# The scored-output pilot covered all candidates but produced extensive ties,
+# allowing frozen candidate order to determine much of the derived ranking.
+# This pilot stays closer to the paper's ranking task by asking for one explicit
+# unique rank position per candidate key and rejecting any duplicate/missing rank.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+profile_states_path = "outputs/phase4_profile_updater_final_v4/profile_states.jsonl"
+
+[experiment]
+max_sessions = 0
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase5_pure_recommender_rankmap_pilot_v3"
