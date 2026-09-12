@@ -9,11 +9,10 @@ became too restrictive for legitimate paraphrases. Pilot v4 separated a concise
 ``value`` from a verbatim ``evidence`` span, but the local derivative model could
 still occasionally fabricate an evidence span from the visible product title.
 
-The accepted-candidate policy therefore validates each generated entry
-independently:
+The accepted policy therefore validates each generated entry independently:
 - ``value`` may be a concise paraphrase/normalization;
-- ``evidence`` must be a contiguous span of the review text;
-- entries with unsupported evidence are rejected and logged individually;
+- ``evidence`` should be a non-empty contiguous span of the review text;
+- entries with empty or unsupported evidence are rejected and logged individually;
 - valid entries from the same response are preserved;
 - downstream profile input uses only validated review evidence spans.
 
@@ -35,8 +34,9 @@ SYSTEM_PROMPT = (
     "Product metadata such as ASIN, product name, and rating may provide identity "
     "or sentiment context, but they are never independent evidence. For every "
     "extracted entry return both a concise value and a short contiguous verbatim "
-    "evidence quote copied from the review text itself. Do not invent facts or use "
-    "title-only attributes."
+    "evidence quote copied from the review text itself. Never return an empty "
+    "evidence string; omit the entry instead. Do not invent facts or use title-only "
+    "attributes."
 )
 
 
@@ -118,10 +118,12 @@ def _entry_array(description: str) -> dict[str, object]:
             "properties": {
                 "value": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Concise interpretation of the preference/feature.",
                 },
                 "evidence": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Short contiguous verbatim quote copied exactly from the review text.",
                 },
             },
@@ -199,10 +201,11 @@ def build_review_extractor_messages(
         "2. ASIN and Product name identify the product only; never use a title-only attribute as evidence.\n"
         "3. Rating is sentiment context only; never invent a specific preference from the numeric rating.\n"
         "4. For every entry, value may be a concise paraphrase, but evidence MUST be a short contiguous VERBATIM quote from the review text.\n"
-        "5. The value must faithfully summarize only what its evidence supports; do not add an unstated attribute.\n"
-        "6. likes = positive/praised aspects; dislikes = negative/complaint aspects; key_features = concrete attributes/capabilities relevant to preference.\n"
-        "7. If a category has no supported evidence, return an empty array. Empty is better than unsupported.\n"
-        "8. Do not use outside knowledge.\n"
+        "5. Never return an empty evidence string. If there is no exact review evidence, omit that entry entirely.\n"
+        "6. The value must faithfully summarize only what its evidence supports; do not add an unstated attribute.\n"
+        "7. likes = positive/praised aspects; dislikes = negative/complaint aspects; key_features = concrete attributes/capabilities relevant to preference.\n"
+        "8. If a category has no supported evidence, return an empty array. Empty is better than unsupported.\n"
+        "9. Do not use outside knowledge.\n"
         "Return only the structured response required by the JSON schema."
     )
 
@@ -251,8 +254,10 @@ def _parse_entry_list(payload: object, field_name: str) -> tuple[ReviewEvidenceE
         evidence = item.get("evidence")
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"Review Extractor field {field_name!r} contains invalid value")
-        if not isinstance(evidence, str) or not evidence.strip():
-            raise ValueError(f"Review Extractor field {field_name!r} contains invalid evidence")
+        if not isinstance(evidence, str):
+            raise ValueError(f"Review Extractor field {field_name!r} contains non-string evidence")
+        # Blank evidence is a semantic grounding failure, not a structural failure.
+        # Keep it here so the entry-level partitioner can reject/log only this item.
         entries.append(ReviewEvidenceEntry(value=value.strip(), evidence=evidence.strip()))
     return tuple(entries)
 
@@ -285,7 +290,16 @@ def _partition_grounded_entries(
     ):
         for entry in entries:
             normalized_evidence = _normalize_grounding_text(entry.evidence)
-            if normalized_evidence in normalized_review:
+            if not normalized_evidence:
+                rejected.append(
+                    RejectedEvidenceEntry(
+                        field=field_name,
+                        value=entry.value,
+                        evidence=entry.evidence,
+                        reason="empty_evidence",
+                    )
+                )
+            elif normalized_evidence in normalized_review:
                 accepted[field_name].append(entry)
             else:
                 rejected.append(
@@ -313,9 +327,10 @@ def parse_review_extraction(
     """Parse one evidence-backed extraction and conservatively reject bad entries.
 
     Structural schema violations still fail the whole response. When a source
-    review is provided, grounding is evaluated entry-by-entry: unsupported
-    evidence entries are excluded from the profile-safe representation and kept
-    in ``rejected_entries`` for audit. No rejected entry is rewritten or replaced.
+    review is provided, grounding is evaluated entry-by-entry: blank evidence or
+    evidence that is not a contiguous review span is excluded from the profile-safe
+    representation and kept in ``rejected_entries`` for audit. No rejected entry
+    is rewritten or replaced.
     """
 
     payload = _extract_json_object(text)
