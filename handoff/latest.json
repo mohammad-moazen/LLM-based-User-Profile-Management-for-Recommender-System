@@ -1,52 +1,5 @@
 {
-  "state": "RESULT",
-  "experiment": "phase4_profile_updater_full_v4",
-  "summary": {
-    "component": "Profile Updater",
-    "run_version": "full_v4",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "source_extractor_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase3_review_extractor_final_1024\\extractions.jsonl",
-    "users": 20,
-    "expected_updates": 134,
-    "successful_updates": 134,
-    "failed_updates": 0,
-    "prefix_contiguity_invariant": "PASS",
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 1024,
-      "seed": 42,
-      "structured_output": "dynamic_same_category_entry_id_schema"
-    },
-    "validation": "same_category_id_selection_plus_information_preserving_dominance_guard",
-    "deletion_policy": "remove_only_exact_duplicates_or_overlaps_dominated_by_richer_same_category_evidence",
-    "guard_totals": {
-      "restored_entries": 619,
-      "allowed_removals": 11
-    },
-    "entry_compaction": {
-      "cumulative_raw_unique_prefix_entries": 2925,
-      "cumulative_safe_prefix_entries": 2849,
-      "prefix_entry_compaction_ratio": 0.02598290598290598,
-      "final_raw_unique_entries": 472,
-      "final_safe_entries": 461,
-      "final_entry_compaction_ratio": 0.02330508474576276,
-      "note": "Entry-count compression is diagnostic only; recommender prompt-token compression is measured later."
-    },
-    "usage_totals": {
-      "prompt_tokens": 146320,
-      "completion_tokens": 15137,
-      "total_tokens": 161457,
-      "max_prompt_tokens": 4287,
-      "max_prompt_task_id": "A3RQZ1J5F5G104:19"
-    },
-    "latency": {
-      "total_seconds": 408.76637700007996,
-      "mean_seconds": 3.0504953507468655,
-      "median_seconds": 1.7284729999992123
-    },
-    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase4_profile_updater_final_v4\\profile_states.jsonl",
-    "status": "PASS"
-  },
-  "errors": []
+  "state": "READY",
+  "message": "Phase 4 full Profile Updater reviewed and frozen at 134/134. Ready for Phase 5 PURE Recommender pilot v1 on 6 frozen sessions.",
+  "next_expected_experiment": "phase5_pure_recommender_pilot"
 }
