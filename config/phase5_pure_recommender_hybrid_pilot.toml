@@ -1,0 +1,26 @@
+# PURE Phase 5 hybrid-output pilot v4.
+#
+# Primary serialization is the accepted direct ranking array because it is the
+# closest representation of the paper's ranking instruction. If the strict
+# parser rejects that response as structurally invalid, the same frozen request
+# context is re-elicited once through the rank-map serialization. The invalid
+# primary response is discarded and is NOT shown to the fallback model call.
+# No post-generation repair is performed on either response.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+profile_states_path = "outputs/phase4_profile_updater_final_v4/profile_states.jsonl"
+
+[experiment]
+max_sessions = 0
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase5_pure_recommender_hybrid_pilot_v4"
