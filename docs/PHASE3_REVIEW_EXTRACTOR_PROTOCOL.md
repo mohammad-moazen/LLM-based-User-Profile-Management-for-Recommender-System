@@ -1,91 +1,56 @@
 # Phase 3 PURE Review Extractor Protocol
 
 ## Purpose
-This stage reproduces **STEP 1: Extract User Representation** from PURE before implementing the Profile Updater and final PURE recommender.
-
-The stage is intentionally validated independently first. It does **not** produce recommendation NDCG by itself.
+This stage reproduces **STEP 1: Extract User Representation** from PURE before implementing the Profile Updater and final PURE recommender. It is validated independently and does not produce recommendation NDCG by itself.
 
 ## Paper-derived behavior
-The PURE paper's Algorithm 1 applies the Review Extractor to the incoming review at each time step:
+The PURE paper's Algorithm 1 applies the Review Extractor to the incoming review at each time step. The output representation contains likes, dislikes, and key features; this representation is later concatenated with the prior user profile and passed to the Profile Updater. The paper's Step-1 prompt supplies ASINs, product names, and input reviews in chronological order, and the implementation section reports JSON-schema structured output.
 
-- extractor input: the incoming review `r_t` associated with the purchased item;
-- extracted representation: likes, dislikes, and key features;
-- the extracted representation is later concatenated with the previous profile and passed to the Profile Updater;
-- the paper's Step-1 prompt supplies ASINs, product names, and input reviews in chronological order and asks the LLM to analyze likes, dislikes, and key features;
-- Figure 1 states that PURE incorporates reviews, ratings, and item interactions;
-- the implementation section states that JSON schemas are used for structured LLM outputs.
+The paper does not publish its exact machine-readable schema or an exact evidence-validation mechanism.
 
-The paper does not publish the exact machine-readable JSON schema or an exact evidence-validation mechanism.
+## Incremental and leakage-safe policy
+For a frozen recommendation session targeting purchase position `t`, only information observed through `t-1` may be used. Therefore a review is never extracted before its purchase occurs, each canonical review is extracted once per accepted extractor version, historical extraction may be reused in later sessions, and the target review is never available when predicting that same target.
 
-## Incremental extraction policy
-For the frozen continuous-recommendation experiment, a recommendation session targeting purchase position `t` may use only information observed through `t-1`.
+The 94 frozen sessions require 134 unique historical review extractions.
 
-Therefore:
+## Active input serialization
+Each call processes one canonical incoming interaction, matching Algorithm 1's incremental `E(r_t)` behavior. The LLM receives ASIN, canonical title, rating, and canonical review text.
 
-1. A review is never extracted before its corresponding purchase has occurred.
-2. Each canonical review is extracted at most once per accepted extractor version.
-3. Once a purchase/review becomes historical context for a later session, its extraction may be reused by the evolving profile.
-4. The current target review is never available to the profile used to predict that same target.
+ASIN, title, and review follow the paper's Step-1 description. Rating is included as an explicit reproduction interpretation because Figure 1 states that PURE incorporates ratings. Metadata remains context only; it is not accepted as independent evidence for a profile entry.
 
-The workload is derived from the already frozen Phase 1 sessions rather than from future interactions outside those sessions.
+## Evidence-backed v4 output
+Pilots v1/v2 showed that prompt-only grounding could still copy title-only attributes. Pilot v3 solved that leakage by requiring every generated string to be an exact review span, but it also rejected a semantically valid paraphrase (`breathing LEDs`) whose source review said the LEDs can `breathe`.
 
-## Active prompt serialization
-Each extractor call processes one chronological incoming interaction, matching Algorithm 1's `E(r_t)` update pattern.
-
-The LLM receives:
-
-- ASIN;
-- canonical product title;
-- rating;
-- canonical review text.
-
-ASIN, product name, and review text follow the Step-1 prompt description. Rating is included because Figure 1 explicitly states that PURE incorporates ratings. The paper does not clarify whether rating is implicitly part of the `input reviews` placeholder, so including it as a separate field is an explicit reproduction interpretation and must not be attributed as an exact published prompt string.
-
-Unlike the Phase 2 ranking baselines, ASIN is intentionally visible here because the paper explicitly includes ASINs in the Review Extractor input.
-
-## Review-grounding policy
-Two pilot rounds showed that prompt-only instructions were insufficient for the active local derivative model: it could still copy or infer title-only attributes into `key_features` even when the review did not mention them.
-
-The accepted-candidate v3 protocol therefore uses a stronger deterministic rule:
-
-- ASIN and product title identify the purchased product but are not independent evidence;
-- rating provides sentiment context but is not independent evidence for a specific attribute;
-- every returned string in `likes`, `dislikes`, and `key_features` must be a **short contiguous verbatim span from the review text**;
-- the local parser checks every generated entry against the canonical review after case/whitespace normalization;
-- title-only, inferred, or paraphrased entries are rejected rather than silently filtered or repaired;
-- unsupported categories remain empty.
-
-This verbatim-span rule is an explicit reproduction engineering choice introduced to operationalize the paper's review-focused extractor reliably with the current local model.
-
-## Structured output schema
-The logical output remains:
+Pilot v4 therefore separates interpretation from evidence. Each category contains objects of the form:
 
 ```json
 {
-  "likes": ["..."],
-  "dislikes": ["..."],
-  "key_features": ["..."]
+  "value": "breathing LEDs",
+  "evidence": "LEDs either breathe"
 }
 ```
 
-All three keys are required. Each value is an array of strings and may be empty.
+The full logical structure is:
 
-This exact schema is a reproduction choice. The paper reports JSON-schema structured outputs but does not publish the schema itself.
+```json
+{
+  "likes": [{"value": "...", "evidence": "..."}],
+  "dislikes": [{"value": "...", "evidence": "..."}],
+  "key_features": [{"value": "...", "evidence": "..."}]
+}
+```
 
-The local OpenAI-compatible client supports a pass-through `response_format`, and the Review Extractor requests a strict JSON Schema from LM Studio. A local parser validates both structure and review grounding after generation.
+Rules:
+- `value` may be a concise faithful paraphrase/normalization;
+- `evidence` must be a short contiguous verbatim span from the source review;
+- the parser validates every evidence span after case/whitespace normalization;
+- title-only or outside-review evidence is rejected;
+- unsupported categories remain empty;
+- no semantic repair, inferred evidence, category migration, or deduplication is performed.
 
-## No silent semantic repair
-The extractor parser:
+For downstream profile construction, the stored safe extraction uses the **verbatim evidence strings**. The model's `value` field is retained separately for audit/inspection only. Redundancy and conflict resolution remain the responsibility of Profile Updater.
 
-- rejects missing or unexpected keys;
-- rejects non-array categories;
-- rejects non-string or blank entries;
-- rejects entries that are not verbatim spans of the source review when production grounding validation is enabled;
-- does not invent missing preferences;
-- does not move entries between categories;
-- does not deduplicate model output.
-
-Redundancy and conflict resolution remain the responsibility of the Profile Updater.
+This exact schema/evidence mechanism is a reproduction engineering choice because the paper does not publish its JSON schema.
 
 ## Frozen experimental basis
 - Dataset: Amazon Review Data 2018 / Video Games 5-core
@@ -102,57 +67,49 @@ Redundancy and conflict resolution remain the responsibility of the Profile Upda
 
 ## Pilot history
 ### Pilot v1
-Technical PASS, but qualitative inspection found title-only attributes copied into `key_features` for the first two reviews.
-
-Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`.
+Technical PASS, but title-only attributes were copied into `key_features` for the first two reviews. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`.
 
 ### Pilot v2
-Technical PASS, but semantic grounding was still insufficient. Review 2 still produced title-derived `backlit keyboard` and `wired mouse`; Review 1 also showed category overlap/rephrasing in key features.
+Technical PASS, but stronger prompt-only grounding still allowed title-derived attributes. See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`.
 
-Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`.
+### Pilot v3
+Mechanical verbatim grounding blocked title leakage, but was too strict and rejected a legitimate paraphrase (`breathing LEDs`). See `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`.
 
-### Pilot v3 gate
-Pilot v3 reruns the same first three reviews with the same model/generation/runtime settings but adds mandatory verbatim-span validation.
+### Pilot v4 gate
+Pilot v4 reruns the same first three reviews with the same model/generation/runtime settings using the evidence-backed schema.
 
 Output directory:
 
-`outputs/phase3_review_extractor_v3/`
+`outputs/phase3_review_extractor_v4/`
 
-Checked-in configuration:
+Checked-in settings:
 - `max_extractions = 3`
 - `resume = true`
 - `fail_fast = true`
 
-Pilot v3 is accepted only if:
+Pilot v4 is accepted only if all three calls are schema-valid, every evidence field passes exact review-span validation, no title-only attribute can enter the safe extraction, category assignment is reasonable, and no future/target review leakage occurs.
 
-1. all 3 calls return schema-valid outputs;
-2. every stored entry passes mechanical verbatim-review grounding;
-3. no title-only/inferred feature survives validation;
-4. no future/target review is used early;
-5. qualitative category assignment is reasonable enough to proceed to full extraction.
+After a clean pilot, `max_extractions` can be changed to `0` and `fail_fast` to `false` for all 134 required historical reviews.
 
-After a clean v3 pilot, `max_extractions` can be changed to `0` and `fail_fast` to `false` to process all 134 unique historical reviews.
+## Automatic experiment handoff
+The runner publishes a compact result/error payload to:
+
+`handoff/latest.json`
+
+and automatically commits/pushes only that path. This removes the need to paste long terminal outputs into chat. The handoff mechanism is documented in `docs/EXPERIMENT_HANDOFF.md`. Full experiment artifacts remain local under ignored `outputs/` directories.
 
 ## Relevant files
 - `config/phase3_review_extractor.toml`
 - `src/pure_recommender/pure/review_extractor.py`
-- `src/pure_recommender/phase3/config.py`
+- `src/pure_recommender/experiment_handoff.py`
 - `src/pure_recommender/phase3/tasks.py`
 - `scripts/run_phase3_review_extractor.py`
 - `scripts/inspect_phase3_review_extractor_pilot.py`
 - `tests/test_review_extractor.py`
-- `tests/test_phase3_review_tasks.py`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`
 - `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V2.md`
+- `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V3.md`
+- `docs/EXPERIMENT_HANDOFF.md`
 
 ## Local outputs
-Historical pilot outputs remain untracked under:
-
-- `outputs/phase3_review_extractor/` — v1
-- `outputs/phase3_review_extractor_v2/` — v2
-- `outputs/phase3_review_extractor_v3/` — v3
-
-Expected files in each output directory:
-
-- `extractions.jsonl`
-- `summary.json`
+Historical pilot outputs remain untracked under v1-v4 output directories. Each accepted run writes `extractions.jsonl` and `summary.json` locally.
