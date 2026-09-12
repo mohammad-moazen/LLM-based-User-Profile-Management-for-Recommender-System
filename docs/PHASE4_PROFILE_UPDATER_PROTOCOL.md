@@ -34,12 +34,24 @@ The paper publishes the natural-language prompt but not an exact JSON schema or 
 - input is the concatenation of previous profile strings and the new accepted Review Extractor evidence strings;
 - output has exactly three arrays: `likes`, `dislikes`, `key_features`;
 - every output string must be copied exactly from the same corresponding input category;
-- entries may be removed to eliminate redundancy, overlap, or conflicts;
 - no paraphrasing, rewriting, new text, outside knowledge, or cross-category movement is allowed;
 - duplicate output strings within a category are invalid;
 - structural/schema violations or unsupported output strings fail the update rather than being silently repaired.
 
 This is stricter than the unspecified paper implementation and is explicitly documented as a reproduction engineering choice.
+
+## Retention-biased deletion policy
+Pilot v1 showed that the original reproduction prompt still allowed arbitrary deletion of unique evidence. Pilot v2 therefore tightens the deletion rule while preserving the same subset validator:
+
+- retain every unique entry by default;
+- remove an entry only for an exact duplicate, clear redundancy/overlap, or clear direct conflict;
+- never remove a unique non-overlapping, non-conflicting entry merely because it seems less relevant or because a shorter profile is preferred;
+- for clear overlap, preserve the more specific/informative source string;
+- for an unambiguous direct conflict, newer evidence may supersede older evidence because the concatenated category order is chronological;
+- if conflict is uncertain, preserve both rather than silently deleting information;
+- the updater still cannot rewrite or move evidence between categories.
+
+The recency tie-break for an unambiguous conflict is a documented reproduction choice; the paper describes maintaining an up-to-date profile but does not publish an exact conflict-resolution algorithm.
 
 ## Initialization
 The profile begins empty. The first observed extraction is concatenated with this empty profile and passed through the same Profile Updater path as every later interaction. This keeps one uniform update rule instead of introducing a special first-step shortcut.
@@ -57,19 +69,39 @@ The updater requests a strict JSON schema:
 
 The deterministic parser validates exact same-category subset membership.
 
-## Pilot v1
-Pilot configuration:
-- source: clean homogeneous final Review Extractor artifact;
-- deterministic user selection: lexicographically first user with at least 3 extraction rows;
-- chronological updates: first 3 extraction rows for that user;
-- initial profile: empty;
+## Pilot v1 — technical PASS, policy NOT accepted
+Configuration:
+- one deterministic eligible user;
+- first 3 chronological updates;
+- temperature 0.0;
+- seed 42;
+- max output tokens 1024;
+- finalized runtime 512 / 256 / 1.
+
+Result:
+- 3/3 successful updates;
+- 0 technical failures;
+- 1,424 total reported tokens;
+- 2.840 s mean latency/update.
+
+However, at update 2 the updater dropped `Arrived even faster than i expected.` even though the string was unique and neither clearly redundant, overlapping, nor conflicting with the two newly added likes. That is over-compression beyond the intended paper operation. Therefore pilot v1 is **not accepted** as the final policy.
+
+Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V1.md`.
+
+## Pilot v2 — configured
+Pilot v2 keeps the same frozen extractor source, model, generation settings, runtime, and exact-subset validator. It changes only the deletion instruction and expands qualitative coverage.
+
+Configuration:
+- deterministic selection of 2 users with at least 4 chronological extraction rows;
+- first 4 updates per selected user;
+- total expected updates: 8;
+- initial profile: empty per user;
 - temperature: 0.0;
 - seed: 42;
 - max output tokens: 1024;
-- model: local derivative `llama-3.2-3b-instruct-uncensored`;
-- finalized LM Studio runtime: Evaluation Batch 512 / Physical Batch 256 / Max Concurrent 1.
+- output: `outputs/phase4_profile_updater_pilot_v2/`.
 
-The pilot handoff includes the previous profile, incoming extraction, updated profile, counts removed from the concatenated profile, latency, and any error/raw response. The pilot is accepted only if all requested updates parse successfully and pass the subset validator, followed by qualitative review of whether crucial information is being preserved sensibly.
+The handoff now includes the exact `concatenated_profile`, `updated_profile`, and mechanically computed `removed_entries` for every category at every update. Pilot v2 is accepted only if all requested updates pass the strict subset validator **and** qualitative review confirms that removals are limited to defensible duplicate/overlap/conflict cases.
 
 ## Relevant files
 - `config/phase4_profile_updater_pilot.toml`
@@ -78,6 +110,7 @@ The pilot handoff includes the previous profile, incoming extraction, updated pr
 - `scripts/run_phase4_profile_updater_pilot.py`
 - `scripts/run_phase4_profile_updater_pilot_safe.py`
 - `tests/test_profile_updater.py`
+- `docs/PHASE4_PROFILE_UPDATER_PILOT_V1.md`
 
 ## Next after pilot
-If pilot v1 is accepted, implement the full chronological Profile Updater state cache for all required user prefixes, freeze profile states, then implement the PURE recommender using the latest eligible profile for each of the 94 frozen recommendation sessions.
+If pilot v2 is accepted, implement the full chronological Profile Updater state cache for all required user prefixes, freeze profile states, then implement the PURE recommender using the latest eligible profile for each of the 94 frozen recommendation sessions.
