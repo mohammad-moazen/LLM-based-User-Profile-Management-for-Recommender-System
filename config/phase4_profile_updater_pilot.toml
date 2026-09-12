@@ -1,17 +1,17 @@
-# PURE Phase 4 Profile Updater pilot v3 configuration.
+# PURE Phase 4 Profile Updater pilot v4 configuration.
 #
-# Pilot v3 keeps the same frozen Review Extractor source and runtime. The model
-# now returns stable entry IDs rather than copying long strings, and a
-# deterministic retention guard restores omitted unique evidence unless a
-# retained same-category entry has clear lexical overlap. Coverage remains two
-# users and four chronological updates per user for direct comparison with v2.
+# Pilot v4 keeps the ID-only model output introduced in v3 and replaces the
+# symmetric overlap guard with an information-preserving directional guard. A
+# shorter overlap may be removed only when a retained/restored same-category
+# entry strictly dominates it. Coverage is broadened to three users and five
+# chronological updates per user.
 
 [input]
 extractions_path = "outputs/phase3_review_extractor_final_1024/extractions.jsonl"
 
 [experiment]
-max_users = 2
-max_updates_per_user = 4
+max_users = 3
+max_updates_per_user = 5
 fail_fast = true
 
 [generation]
@@ -20,4 +20,4 @@ max_tokens = 1024
 seed = 42
 
 [output]
-directory = "outputs/phase4_profile_updater_pilot_v3"
+directory = "outputs/phase4_profile_updater_pilot_v4"
