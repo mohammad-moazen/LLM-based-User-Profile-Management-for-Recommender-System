@@ -1,5 +1,242 @@
 {
-  "state": "READY",
-  "message": "Phase 4 full Profile Updater reviewed and frozen at 134/134. Ready for Phase 5 PURE Recommender pilot v1 on 6 frozen sessions.",
-  "next_expected_experiment": "phase5_pure_recommender_pilot"
+  "state": "RESULT",
+  "experiment": "phase5_pure_recommender_pilot",
+  "summary": {
+    "component": "PURE Recommender",
+    "run_version": "pilot_v1",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "frozen_sessions": 94,
+    "requested_sessions": 6,
+    "successful_sessions": 6,
+    "failed_sessions": 0,
+    "users_in_successful_sessions": 2,
+    "profile_state_alignment": "target_position_minus_one",
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "complete_numbered_candidate_ranking_json_schema"
+    },
+    "ndcg": {
+      "1": 0.0,
+      "5": 0.0,
+      "10": 0.11978339730449808,
+      "20": 0.27485399989234316
+    },
+    "prompt_tokens": {
+      "total": 3910,
+      "mean": 651.6666666666666,
+      "max": 851
+    },
+    "completion_tokens": {
+      "total": 432,
+      "mean": 72
+    },
+    "latency": {
+      "total_seconds": 11.708657499992114,
+      "mean_seconds": 1.9514429166653524
+    },
+    "status": "PASS"
+  },
+  "rows": [
+    {
+      "status": "ok",
+      "session_id": "A24ZRTTC3SPX8C:4",
+      "user_id": "A24ZRTTC3SPX8C",
+      "target_position": 4,
+      "profile_state_task_id": "A24ZRTTC3SPX8C:3",
+      "history_length": 3,
+      "profile_counts": {
+        "likes": 5,
+        "dislikes": 2,
+        "key_features": 3,
+        "total": 10
+      },
+      "target_rank": 16,
+      "ndcg": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0,
+        "20": 0.24465054211822604
+      },
+      "finish_reason": "stop",
+      "latency_seconds": 2.3495855999935884,
+      "usage": {
+        "prompt_tokens": 757,
+        "completion_tokens": 72,
+        "total_tokens": 829,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A24ZRTTC3SPX8C:5",
+      "user_id": "A24ZRTTC3SPX8C",
+      "target_position": 5,
+      "profile_state_task_id": "A24ZRTTC3SPX8C:4",
+      "history_length": 4,
+      "profile_counts": {
+        "likes": 7,
+        "dislikes": 2,
+        "key_features": 4,
+        "total": 13
+      },
+      "target_rank": 9,
+      "ndcg": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.3010299956639812,
+        "20": 0.3010299956639812
+      },
+      "finish_reason": "stop",
+      "latency_seconds": 2.0365385999975842,
+      "usage": {
+        "prompt_tokens": 851,
+        "completion_tokens": 72,
+        "total_tokens": 923,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A2GSRMMRODQ4JH:4",
+      "user_id": "A2GSRMMRODQ4JH",
+      "target_position": 4,
+      "profile_state_task_id": "A2GSRMMRODQ4JH:3",
+      "history_length": 3,
+      "profile_counts": {
+        "likes": 1,
+        "dislikes": 0,
+        "key_features": 0,
+        "total": 1
+      },
+      "target_rank": 6,
+      "ndcg": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.3562071871080222,
+        "20": 0.3562071871080222
+      },
+      "finish_reason": "stop",
+      "latency_seconds": 1.8618808999963221,
+      "usage": {
+        "prompt_tokens": 555,
+        "completion_tokens": 72,
+        "total_tokens": 627,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A2GSRMMRODQ4JH:5",
+      "user_id": "A2GSRMMRODQ4JH",
+      "target_position": 5,
+      "profile_state_task_id": "A2GSRMMRODQ4JH:4",
+      "history_length": 4,
+      "profile_counts": {
+        "likes": 1,
+        "dislikes": 0,
+        "key_features": 0,
+        "total": 1
+      },
+      "target_rank": 16,
+      "ndcg": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0,
+        "20": 0.24465054211822604
+      },
+      "finish_reason": "stop",
+      "latency_seconds": 1.8341676999989431,
+      "usage": {
+        "prompt_tokens": 579,
+        "completion_tokens": 72,
+        "total_tokens": 651,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A2GSRMMRODQ4JH:6",
+      "user_id": "A2GSRMMRODQ4JH",
+      "target_position": 6,
+      "profile_state_task_id": "A2GSRMMRODQ4JH:5",
+      "history_length": 5,
+      "profile_counts": {
+        "likes": 1,
+        "dislikes": 0,
+        "key_features": 0,
+        "total": 1
+      },
+      "target_rank": 20,
+      "ndcg": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0,
+        "20": 0.227670248696953
+      },
+      "finish_reason": "stop",
+      "latency_seconds": 1.796752500005823,
+      "usage": {
+        "prompt_tokens": 562,
+        "completion_tokens": 72,
+        "total_tokens": 634,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "status": "ok",
+      "session_id": "A2GSRMMRODQ4JH:7",
+      "user_id": "A2GSRMMRODQ4JH",
+      "target_position": 7,
+      "profile_state_task_id": "A2GSRMMRODQ4JH:6",
+      "history_length": 6,
+      "profile_counts": {
+        "likes": 1,
+        "dislikes": 0,
+        "key_features": 0,
+        "total": 1
+      },
+      "target_rank": 11,
+      "ndcg": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0,
+        "20": 0.27894294565112987
+      },
+      "finish_reason": "stop",
+      "latency_seconds": 1.829732199999853,
+      "usage": {
+        "prompt_tokens": 606,
+        "completion_tokens": 72,
+        "total_tokens": 678,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "error": null,
+      "raw_response": null
+    }
+  ]
 }
