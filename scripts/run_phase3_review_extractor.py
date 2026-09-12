@@ -132,7 +132,8 @@ def main() -> int:
     print(f"Temperature              : {config.generation.temperature}")
     print(f"Max output tokens        : {config.generation.max_tokens}")
     print(f"Generation seed          : {config.generation.seed}")
-    print(f"Structured output        : JSON Schema")
+    print("Structured output        : JSON Schema")
+    print("Grounding validation     : verbatim review span")
     print(f"Resume                   : {config.experiment.resume}")
     if "uncensored" in llm_config.model.lower():
         print("Model alignment           : derivative local model; not exact paper checkpoint")
@@ -148,6 +149,7 @@ def main() -> int:
         messages = build_review_extractor_messages(interaction)
         asin = str(interaction["asin"])
         title = str(interaction["title"])
+        source_review = str(interaction["review_text"])
 
         print(
             f"[{ordinal:03d}/{len(tasks):03d}] {task.task_id}: "
@@ -167,7 +169,10 @@ def main() -> int:
             )
             elapsed = time.perf_counter() - started
             raw_content = response.content
-            extraction = parse_review_extraction(raw_content)
+            extraction = parse_review_extraction(
+                raw_content,
+                source_review=source_review,
+            )
             extraction_dict = extraction.to_dict()
 
             result: dict[str, object] = {
@@ -181,6 +186,7 @@ def main() -> int:
                 "status": "ok",
                 "component": "Review Extractor",
                 "model": llm_config.model,
+                "grounding_validation": "verbatim_review_span",
                 "extraction": extraction_dict,
                 "latency_seconds": elapsed,
                 "usage": dict(response.usage) if response.usage else None,
@@ -205,6 +211,7 @@ def main() -> int:
                 "status": "error",
                 "component": "Review Extractor",
                 "model": llm_config.model,
+                "grounding_validation": "verbatim_review_span",
                 "latency_seconds": elapsed,
                 "error": str(exc),
                 "raw_response": raw_content,
@@ -271,6 +278,7 @@ def main() -> int:
             "max_tokens": config.generation.max_tokens,
             "seed": config.generation.seed,
             "structured_output": "json_schema",
+            "grounding_validation": "verbatim_review_span",
         },
         "extracted_entry_counts": extracted_counts,
         "usage_totals": {
