@@ -1,23 +1,21 @@
-# Phase 3 PURE Review Extractor pilot configuration.
+# Phase 3 PURE Review Extractor full-run configuration.
 #
-# The extractor is incremental: each canonical review is processed only after
-# that purchase has become observable in the continuous recommendation stream.
-#
-# Pilot v5 keeps the evidence-backed schema from v4 but validates grounding
-# entry-by-entry. Unsupported evidence entries are rejected and logged without
-# discarding valid entries from the same response. Earlier pilot artifacts
-# (v1-v4) remain untouched for auditability.
+# Pilot v5 is accepted. The full run keeps the same evidence-backed schema,
+# prompt, model/generation settings, grounding filter, runtime profile, and
+# output directory. Resume reuses the 3 accepted pilot extractions and processes
+# the remaining required historical reviews.
 
 [input]
 interactions_path = "outputs/phase1/interactions.jsonl.gz"
 sessions_path = "outputs/phase1/sessions.jsonl.gz"
 
 [experiment]
-# Validate entry-level conservative filtering on the same first 3 real reviews.
-# Use 0 later to process every unique review required by the 94 frozen sessions.
-max_extractions = 3
+# 0 means every unique historical review required by the 94 frozen sessions.
+max_extractions = 0
 resume = true
-fail_fast = true
+# Continue past malformed/API/task failures so the run can finish and report all
+# failures; a later resume run retries only tasks that are not already status=ok.
+fail_fast = false
 
 [generation]
 temperature = 0.0
