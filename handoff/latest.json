@@ -1,5 +1,177 @@
 {
-  "state": "READY",
-  "message": "Unchanged-profile throughput baseline reviewed and recorded. Keep LM Studio settings unchanged and run the same-profile repeatability benchmark next.",
-  "next_expected_experiment": "runtime_repeatability_benchmark"
+  "state": "RESULT",
+  "experiment": "runtime_repeatability_benchmark",
+  "summary": {
+    "experiment": "runtime_repeatability_benchmark",
+    "label": "baseline_repeatability_512_256_1",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "sample_count": 12,
+    "repeat_count": 3,
+    "measured_request_count": 36,
+    "warmup_count": 2,
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "evidence_backed_json_schema"
+    },
+    "latency": {
+      "overall_mean_seconds": 3.7635597361109427,
+      "overall_median_seconds": 3.3307807999990473,
+      "pass_mean_seconds": [
+        3.7652922250005454,
+        3.7635108916662525,
+        3.76187609166603
+      ],
+      "pass_mean_stddev_seconds": 0.0017085903764887103
+    },
+    "frozen_reference_similarity": {
+      "mean_jaccard": 0.799404761904762,
+      "median_jaccard": 1.0,
+      "min_jaccard": 0.14285714285714285
+    },
+    "same_profile_repeatability": {
+      "exact_repeat_pairs": 36,
+      "repeat_pair_count": 36,
+      "exact_repeat_pair_rate": 1.0,
+      "mean_pairwise_jaccard": 1.0,
+      "median_pairwise_jaccard": 1.0,
+      "min_pairwise_jaccard": 1.0
+    },
+    "memory": {
+      "before": {
+        "process_count": 1,
+        "working_set_gb": 10.281333923339844,
+        "private_gb": 12.689655303955078
+      },
+      "after": {
+        "process_count": 1,
+        "working_set_gb": 10.332557678222656,
+        "private_gb": 12.64913558959961
+      },
+      "private_delta_gb": -0.04051971435546875,
+      "working_set_delta_gb": 0.0512237548828125
+    }
+  },
+  "pass_summaries": [
+    {
+      "repeat": 1,
+      "mean_latency_seconds": 3.7652922250005454,
+      "median_latency_seconds": 3.3236635499961267,
+      "exact_matches_vs_frozen": 8,
+      "exact_match_rate_vs_frozen": 0.6666666666666666,
+      "mean_jaccard_vs_frozen": 0.799404761904762,
+      "median_jaccard_vs_frozen": 1.0,
+      "rejected_entries": 4,
+      "total_reported_tokens": 8271
+    },
+    {
+      "repeat": 2,
+      "mean_latency_seconds": 3.7635108916662525,
+      "median_latency_seconds": 3.348428100001911,
+      "exact_matches_vs_frozen": 8,
+      "exact_match_rate_vs_frozen": 0.6666666666666666,
+      "mean_jaccard_vs_frozen": 0.799404761904762,
+      "median_jaccard_vs_frozen": 1.0,
+      "rejected_entries": 4,
+      "total_reported_tokens": 8271
+    },
+    {
+      "repeat": 3,
+      "mean_latency_seconds": 3.76187609166603,
+      "median_latency_seconds": 3.3307807999990473,
+      "exact_matches_vs_frozen": 8,
+      "exact_match_rate_vs_frozen": 0.6666666666666666,
+      "mean_jaccard_vs_frozen": 0.799404761904762,
+      "median_jaccard_vs_frozen": 1.0,
+      "rejected_entries": 4,
+      "total_reported_tokens": 8271
+    }
+  ],
+  "per_task_repeatability": [
+    {
+      "task_id": "A24ZRTTC3SPX8C:1",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A2JMHVTKWQXMWJ:2",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A3RQZ1J5F5G104:1",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A3RQZ1J5F5G104:13",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A2BFIYZYNK54QX:6",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A3IFI14LQ1RRE8:1",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "AHHE2CND22QHE:3",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A26C4UAI3IXYF:4",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "AE93Q3G5S3OGO:1",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A30QZOB8GIOBJO:2",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A174LCVSHN24BT:6",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    },
+    {
+      "task_id": "A1VNZPQGYTZIHJ:5",
+      "unique_profile_variants": 1,
+      "exact_repeat_pairs": 3,
+      "repeat_pair_count": 3,
+      "mean_pairwise_jaccard": 1.0
+    }
+  ]
 }
