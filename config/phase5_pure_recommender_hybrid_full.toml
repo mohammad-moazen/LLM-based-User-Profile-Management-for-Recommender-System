@@ -1,0 +1,26 @@
+# PURE Phase 5 final hybrid-output evaluation.
+#
+# Uniform policy for every frozen session:
+# 1) request the direct 20-item ranking array;
+# 2) validate with the strict complete-permutation parser;
+# 3) only after a structural direct-ranking parse failure, discard that response
+#    and issue one fresh rank-map request with the same frozen inputs/settings;
+# 4) never repair either model response after generation.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+profile_states_path = "outputs/phase4_profile_updater_final_v4/profile_states.jsonl"
+
+[experiment]
+max_sessions = 0
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase5_pure_recommender_hybrid_final_v4"
