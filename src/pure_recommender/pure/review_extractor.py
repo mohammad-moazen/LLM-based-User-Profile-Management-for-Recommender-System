@@ -1,19 +1,23 @@
-"""PURE Review Extractor prompt, schema, and strict parser.
+"""PURE Review Extractor prompt, schema, and strict evidence validation.
 
-The paper's Algorithm 1 applies the extractor to the incoming review at each
-chronological time step and represents the result using three categories:
-likes, dislikes, and key features. The paper also states that structured JSON
-schemas are used for reliable automatic post-processing, but it does not publish
-the exact schema. This module therefore makes the project's schema choice
-explicit while preserving the paper's three-part representation.
+The paper's Algorithm 1 extracts likes, dislikes, and key features from the
+incoming review. The paper also reports JSON-schema structured outputs but does
+not publish the exact schema.
 
-Pilot validation showed that a small local model can copy attributes from the
-visible product title even when the review itself never mentions them. To keep
-the evolving user profile review-grounded while still retaining the paper's
-product metadata as context, the accepted extractor protocol requires every
-returned string to be a short verbatim span from the review text. The parser
-then verifies this property mechanically instead of relying on prompt wording
-alone.
+Pilot v1/v2 showed that a small local model may copy title-only attributes. A
+strict verbatim-only output rule in pilot v3 fixed title leakage but rejected a
+legitimate paraphrase (``breathing LEDs``) even though the review explicitly said
+that the LEDs can ``breathe``. The accepted protocol therefore separates the
+model's concise interpretation from its evidence span:
+
+- ``value`` may be a concise paraphrase/normalization;
+- ``evidence`` must be a short contiguous verbatim span from the review text;
+- only evidence-backed entries are accepted;
+- the downstream safe extraction uses the verbatim evidence spans, while the
+  model's normalized values are retained only for audit/inspection.
+
+This preserves semantic flexibility without allowing product-title-only content
+to enter the evolving profile.
 """
 
 from __future__ import annotations
@@ -26,69 +30,106 @@ from typing import Mapping
 
 SYSTEM_PROMPT = (
     "You are the Review Extractor component of a recommender system. "
-    "Analyze the supplied purchased product and review as data. Extract only "
-    "preferences explicitly supported by the REVIEW TEXT. Product metadata "
-    "such as ASIN, product name, and rating may provide identity/sentiment "
-    "context, but they are NEVER evidence for an extracted entry. Every string "
-    "you return must be a short contiguous verbatim quote copied from the "
-    "review text itself; do not paraphrase, infer, or copy title-only attributes. "
-    "Separate the result into likes, dislikes, and key product features."
+    "Extract user likes, dislikes, and key product features from the REVIEW TEXT. "
+    "Product metadata such as ASIN, product name, and rating may provide identity "
+    "or sentiment context, but they are never independent evidence. For every "
+    "extracted entry return both a concise value and a short contiguous verbatim "
+    "evidence quote copied from the review text itself. Do not invent facts or use "
+    "title-only attributes."
 )
 
 
 @dataclass(frozen=True, slots=True)
+class ReviewEvidenceEntry:
+    """One model interpretation anchored to an exact review-text span."""
+
+    value: str
+    evidence: str
+
+
+@dataclass(frozen=True, slots=True)
 class ReviewExtraction:
-    """Structured representation extracted from one chronological interaction."""
+    """Evidence-backed representation extracted from one interaction."""
 
-    likes: tuple[str, ...]
-    dislikes: tuple[str, ...]
-    key_features: tuple[str, ...]
+    likes: tuple[ReviewEvidenceEntry, ...]
+    dislikes: tuple[ReviewEvidenceEntry, ...]
+    key_features: tuple[ReviewEvidenceEntry, ...]
 
-    def to_dict(self) -> dict[str, list[str]]:
+    def to_profile_dict(self) -> dict[str, list[str]]:
+        """Return only review-verbatim evidence strings safe for profile input."""
+
         return {
-            "likes": list(self.likes),
-            "dislikes": list(self.dislikes),
-            "key_features": list(self.key_features),
+            "likes": [entry.evidence for entry in self.likes],
+            "dislikes": [entry.evidence for entry in self.dislikes],
+            "key_features": [entry.evidence for entry in self.key_features],
         }
 
+    def to_audit_dict(self) -> dict[str, list[dict[str, str]]]:
+        """Return model values plus evidence for debugging and qualitative audit."""
 
-def _string_array(description: str) -> dict[str, object]:
+        return {
+            "likes": [
+                {"value": entry.value, "evidence": entry.evidence}
+                for entry in self.likes
+            ],
+            "dislikes": [
+                {"value": entry.value, "evidence": entry.evidence}
+                for entry in self.dislikes
+            ],
+            "key_features": [
+                {"value": entry.value, "evidence": entry.evidence}
+                for entry in self.key_features
+            ],
+        }
+
+    # Backward-friendly name used by runner/tests: downstream-safe profile data.
+    def to_dict(self) -> dict[str, list[str]]:
+        return self.to_profile_dict()
+
+
+def _entry_array(description: str) -> dict[str, object]:
     return {
         "type": "array",
         "description": description,
         "items": {
-            "type": "string",
-            "description": "A short contiguous verbatim quote copied from the review text.",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string",
+                    "description": "Concise interpretation of the preference/feature.",
+                },
+                "evidence": {
+                    "type": "string",
+                    "description": (
+                        "Short contiguous verbatim quote copied exactly from the review text."
+                    ),
+                },
+            },
+            "required": ["value", "evidence"],
+            "additionalProperties": False,
         },
     }
 
 
 def review_extractor_response_format() -> dict[str, object]:
-    """Return the JSON-Schema response format used by the local runtime.
-
-    The exact schema is a reproduction choice because the paper reports using
-    JSON schemas but does not publish the machine-readable schema itself.
-    Arrays may be empty when the review contains no supported evidence for a
-    category. Entries are later checked against the source review by the local
-    parser; title-only or paraphrased strings are rejected rather than repaired.
-    """
+    """Return the project-defined evidence-backed JSON schema."""
 
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "pure_review_extraction",
+            "name": "pure_review_extraction_evidence_backed",
             "strict": True,
             "schema": {
                 "type": "object",
                 "properties": {
-                    "likes": _string_array(
-                        "Positive preferences or praised aspects explicitly stated in the review."
+                    "likes": _entry_array(
+                        "Positive preferences or praised aspects supported by the review."
                     ),
-                    "dislikes": _string_array(
-                        "Negative preferences, complaints, or disliked aspects explicitly stated in the review."
+                    "dislikes": _entry_array(
+                        "Negative preferences or complaints supported by the review."
                     ),
-                    "key_features": _string_array(
-                        "Concrete product attributes or capabilities explicitly discussed in the review and relevant to preference."
+                    "key_features": _entry_array(
+                        "Concrete product attributes/capabilities discussed in the review."
                     ),
                 },
                 "required": ["likes", "dislikes", "key_features"],
@@ -101,21 +142,7 @@ def review_extractor_response_format() -> dict[str, object]:
 def build_review_extractor_messages(
     interaction: Mapping[str, object],
 ) -> list[dict[str, str]]:
-    """Build one incremental Review Extractor request.
-
-    Algorithm 1 applies the extractor to the incoming review ``r_t``. We send
-    one canonical interaction per call so the output can later be merged into
-    the previous profile without re-extracting older reviews.
-
-    ASIN, product name, and review text follow the paper's Step-1 prompt. The
-    rating is also included because Figure 1 explicitly depicts PURE as using
-    reviews, ratings, and item interactions. The paper does not clarify whether
-    the rating is embedded inside the ``input reviews`` placeholder, so this is
-    recorded as an explicit reproduction interpretation.
-
-    Product metadata remains visible for paper alignment, but only verbatim
-    review-text spans are accepted as extracted profile evidence.
-    """
+    """Build one incremental Review Extractor request."""
 
     asin = str(interaction.get("asin", "")).strip()
     title = str(interaction.get("title", "")).strip()
@@ -149,14 +176,13 @@ def build_review_extractor_messages(
         "Analyze the user's likes/dislikes/key features by referring to the review.\n\n"
         "GROUNDING RULES — FOLLOW STRICTLY:\n"
         "1. The REVIEW TEXT between the markers is the only evidence source.\n"
-        "2. ASIN and Product name identify the product only. Never copy a feature merely because it appears in the product name.\n"
-        "3. Rating is sentiment context only. Never invent a preference from the numeric rating.\n"
-        "4. EVERY returned string must be a short contiguous VERBATIM QUOTE from the review text. Do not paraphrase.\n"
-        "5. likes = explicitly positive or praised review spans.\n"
-        "6. dislikes = explicitly negative or complaint review spans.\n"
-        "7. key_features = concrete product attributes or capabilities explicitly discussed in the review as relevant to preference.\n"
-        "8. If a category has no supported review span, return an empty array. Empty is better than unsupported.\n"
-        "9. Do not use outside knowledge or infer unstated attributes.\n"
+        "2. ASIN and Product name identify the product only; never use a title-only attribute as evidence.\n"
+        "3. Rating is sentiment context only; never invent a specific preference from the numeric rating.\n"
+        "4. For every entry, value may be a concise paraphrase, but evidence MUST be a short contiguous VERBATIM quote from the review text.\n"
+        "5. The value must faithfully summarize only what its evidence supports; do not add an unstated attribute.\n"
+        "6. likes = positive/praised aspects; dislikes = negative/complaint aspects; key_features = concrete attributes/capabilities relevant to preference.\n"
+        "7. If a category has no supported evidence, return an empty array. Empty is better than unsupported.\n"
+        "8. Do not use outside knowledge.\n"
         "Return only the structured response required by the JSON schema."
     )
 
@@ -167,8 +193,6 @@ def build_review_extractor_messages(
 
 
 def _extract_json_object(text: str) -> dict[str, object]:
-    """Parse one JSON object, tolerating a surrounding Markdown code fence."""
-
     stripped = text.strip()
     if stripped.startswith("```"):
         lines = stripped.splitlines()
@@ -193,27 +217,28 @@ def _extract_json_object(text: str) -> dict[str, object]:
     return payload
 
 
-def _parse_string_list(payload: object, field_name: str) -> tuple[str, ...]:
+def _parse_entry_list(payload: object, field_name: str) -> tuple[ReviewEvidenceEntry, ...]:
     if not isinstance(payload, list):
         raise ValueError(f"Review Extractor field {field_name!r} must be an array")
 
-    values: list[str] = []
-    for value in payload:
-        if not isinstance(value, str):
+    entries: list[ReviewEvidenceEntry] = []
+    for item in payload:
+        if not isinstance(item, dict) or set(item) != {"value", "evidence"}:
             raise ValueError(
-                f"Review Extractor field {field_name!r} contains a non-string value: {value!r}"
+                f"Review Extractor field {field_name!r} must contain only value/evidence objects"
             )
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError(
-                f"Review Extractor field {field_name!r} contains an empty string"
-            )
-        values.append(normalized)
-    return tuple(values)
+        value = item.get("value")
+        evidence = item.get("evidence")
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Review Extractor field {field_name!r} contains invalid value")
+        if not isinstance(evidence, str) or not evidence.strip():
+            raise ValueError(f"Review Extractor field {field_name!r} contains invalid evidence")
+        entries.append(ReviewEvidenceEntry(value=value.strip(), evidence=evidence.strip()))
+    return tuple(entries)
 
 
 def _normalize_grounding_text(value: str) -> str:
-    """Normalize only whitespace/case for deterministic verbatim-span checks."""
+    """Normalize case/whitespace only for deterministic evidence-span checks."""
 
     return re.sub(r"\s+", " ", value).strip().casefold()
 
@@ -226,17 +251,17 @@ def _validate_review_grounding(
     if not normalized_review:
         raise ValueError("Cannot validate Review Extractor grounding against an empty review")
 
-    for field_name, values in (
+    for field_name, entries in (
         ("likes", extraction.likes),
         ("dislikes", extraction.dislikes),
         ("key_features", extraction.key_features),
     ):
-        for value in values:
-            normalized_value = _normalize_grounding_text(value)
-            if normalized_value not in normalized_review:
+        for entry in entries:
+            normalized_evidence = _normalize_grounding_text(entry.evidence)
+            if normalized_evidence not in normalized_review:
                 raise ValueError(
-                    "Review Extractor produced a non-verbatim or non-review-grounded entry; "
-                    f"field={field_name!r}, value={value!r}"
+                    "Review Extractor produced non-verbatim review evidence; "
+                    f"field={field_name!r}, value={entry.value!r}, evidence={entry.evidence!r}"
                 )
 
 
@@ -245,16 +270,11 @@ def parse_review_extraction(
     *,
     source_review: str | None = None,
 ) -> ReviewExtraction:
-    """Strictly validate and return one three-part extraction.
+    """Parse and strictly validate one evidence-backed extraction.
 
-    No semantic repair, deduplication, inferred entries, or category migration is
-    performed. When ``source_review`` is provided (required by the production
-    runner), each returned string must be a contiguous review-text span after
-    case/whitespace normalization. Unsupported title-derived or paraphrased
-    entries are rejected rather than silently filtered.
-
-    Redundancy/conflict handling remains the responsibility of Profile Updater,
-    matching the component separation described in PURE.
+    No semantic repair, deduplication, category migration, or inferred evidence is
+    performed. When a source review is provided, every evidence string must be a
+    contiguous review span after case/whitespace normalization.
     """
 
     payload = _extract_json_object(text)
@@ -269,12 +289,10 @@ def parse_review_extraction(
         )
 
     extraction = ReviewExtraction(
-        likes=_parse_string_list(payload["likes"], "likes"),
-        dislikes=_parse_string_list(payload["dislikes"], "dislikes"),
-        key_features=_parse_string_list(payload["key_features"], "key_features"),
+        likes=_parse_entry_list(payload["likes"], "likes"),
+        dislikes=_parse_entry_list(payload["dislikes"], "dislikes"),
+        key_features=_parse_entry_list(payload["key_features"], "key_features"),
     )
-
     if source_review is not None:
         _validate_review_grounding(extraction, source_review)
-
     return extraction
