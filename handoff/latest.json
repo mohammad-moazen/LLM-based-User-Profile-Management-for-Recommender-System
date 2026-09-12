@@ -1,5 +1,28 @@
 {
-  "state": "READY",
-  "message": "Repeatability baseline reviewed and recorded. Ready for current-protocol runtime reference capture under 512/256/concurrency 1.",
-  "next_expected_experiment": "runtime_profile_reference_capture"
+  "state": "RESULT",
+  "experiment": "runtime_profile_reference_capture",
+  "summary": {
+    "experiment": "runtime_profile_reference_capture",
+    "label": "baseline_512_256_1",
+    "reference_path": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\runtime_profile_reference\\current_protocol_reference.json",
+    "sample_count": 12,
+    "mean_latency_seconds": 3.837574316666481,
+    "median_latency_seconds": 3.4000797999979113,
+    "rejected_entries": 4,
+    "total_reported_tokens": 8271,
+    "memory": {
+      "before": {
+        "process_count": 1,
+        "working_set_gb": 6.431610107421875,
+        "private_gb": 12.669044494628906
+      },
+      "after": {
+        "process_count": 1,
+        "working_set_gb": 6.4117431640625,
+        "private_gb": 12.649127960205078
+      },
+      "private_delta_gb": -0.019916534423828125,
+      "working_set_delta_gb": -0.019866943359375
+    }
+  }
 }
