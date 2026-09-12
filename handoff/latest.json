@@ -1,5 +1,143 @@
 {
-  "state": "READY",
-  "message": "Phase 3 Review Extractor final 134/134 PASS result was reviewed and frozen. Mailbox reset for the next experiment.",
-  "next_expected_experiment": "runtime_throughput_benchmark"
+  "state": "RESULT",
+  "experiment": "runtime_throughput_benchmark",
+  "summary": {
+    "experiment": "runtime_throughput_benchmark",
+    "label": "baseline_512_256_1",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "sample_count": 12,
+    "warmup_count": 2,
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42,
+      "structured_output": "evidence_backed_json_schema"
+    },
+    "latency": {
+      "mean_seconds": 3.996981041667823,
+      "median_seconds": 3.5809857999993255,
+      "min_seconds": 1.256146899999294,
+      "max_seconds": 11.511548800001037,
+      "historical_selected_mean_seconds": 3.6751080916674255,
+      "speedup_vs_historical_selected": 0.9194709840639902
+    },
+    "quality_guard": {
+      "exact_profile_matches": 8,
+      "sample_count": 12,
+      "exact_profile_match_rate": 0.6666666666666666
+    },
+    "total_reported_tokens": 8272,
+    "memory": {
+      "before": {
+        "process_count": 1,
+        "working_set_gb": 11.227584838867188,
+        "private_gb": 12.78042221069336
+      },
+      "after": {
+        "process_count": 1,
+        "working_set_gb": 11.231510162353516,
+        "private_gb": 12.784355163574219
+      },
+      "private_delta_gb": 0.003932952880859375,
+      "working_set_delta_gb": 0.003925323486328125
+    }
+  },
+  "rows": [
+    {
+      "task_id": "A24ZRTTC3SPX8C:1",
+      "latency_seconds": 1.9926209000041126,
+      "historical_frozen_latency_seconds": 2.337169799997355,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 543
+    },
+    {
+      "task_id": "A2JMHVTKWQXMWJ:2",
+      "latency_seconds": 4.763934700000391,
+      "historical_frozen_latency_seconds": 3.6097577000036836,
+      "exact_profile_match": false,
+      "rejected_entry_count": 0,
+      "total_tokens": 694
+    },
+    {
+      "task_id": "A3RQZ1J5F5G104:1",
+      "latency_seconds": 11.511548800001037,
+      "historical_frozen_latency_seconds": 9.79135650000535,
+      "exact_profile_match": false,
+      "rejected_entry_count": 4,
+      "total_tokens": 1246
+    },
+    {
+      "task_id": "A3RQZ1J5F5G104:13",
+      "latency_seconds": 6.409458200003428,
+      "historical_frozen_latency_seconds": 5.723291499998595,
+      "exact_profile_match": false,
+      "rejected_entry_count": 0,
+      "total_tokens": 902
+    },
+    {
+      "task_id": "A2BFIYZYNK54QX:6",
+      "latency_seconds": 4.976633099999162,
+      "historical_frozen_latency_seconds": 4.6593002999943565,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 841
+    },
+    {
+      "task_id": "A3IFI14LQ1RRE8:1",
+      "latency_seconds": 5.3909635999953025,
+      "historical_frozen_latency_seconds": 5.495597500004806,
+      "exact_profile_match": false,
+      "rejected_entry_count": 0,
+      "total_tokens": 790
+    },
+    {
+      "task_id": "AHHE2CND22QHE:3",
+      "latency_seconds": 1.256146899999294,
+      "historical_frozen_latency_seconds": 1.2071588999970118,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 455
+    },
+    {
+      "task_id": "A26C4UAI3IXYF:4",
+      "latency_seconds": 1.4779163000057451,
+      "historical_frozen_latency_seconds": 1.4422755999985384,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 484
+    },
+    {
+      "task_id": "AE93Q3G5S3OGO:1",
+      "latency_seconds": 1.2745131000046968,
+      "historical_frozen_latency_seconds": 1.1343010000055074,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 468
+    },
+    {
+      "task_id": "A30QZOB8GIOBJO:2",
+      "latency_seconds": 1.684898699997575,
+      "historical_frozen_latency_seconds": 1.6894389000008232,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 574
+    },
+    {
+      "task_id": "A174LCVSHN24BT:6",
+      "latency_seconds": 2.39803689999826,
+      "historical_frozen_latency_seconds": 2.3684839000052307,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 546
+    },
+    {
+      "task_id": "A1VNZPQGYTZIHJ:5",
+      "latency_seconds": 4.82710130000487,
+      "historical_frozen_latency_seconds": 4.643165499997849,
+      "exact_profile_match": true,
+      "rejected_entry_count": 0,
+      "total_tokens": 729
+    }
+  ]
 }
