@@ -35,7 +35,7 @@ def main() -> int:
         payload.update(
             {
                 "state": "ERROR",
-                "experiment": "phase4_profile_updater_pilot_v1",
+                "experiment": "phase4_profile_updater_pilot_v2",
                 "exception_type": type(exc).__name__,
                 "exception_message": str(exc),
                 "traceback": traceback.format_exc(),
@@ -44,7 +44,7 @@ def main() -> int:
         ok, message = publish_handoff(
             REPO_ROOT,
             payload,
-            commit_message="handoff: phase4 profile updater pilot traceback",
+            commit_message="handoff: phase4 profile updater pilot v2 traceback",
             auto_push=True,
         )
         print(f"{'HANDOFF' if ok else 'HANDOFF WARNING'}: {message}")
