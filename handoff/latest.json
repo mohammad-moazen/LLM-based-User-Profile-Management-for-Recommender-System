@@ -1,10 +1,10 @@
 {
   "state": "RESULT",
-  "experiment": "phase6_sequential_hybrid_full_v1",
+  "experiment": "phase6_recency_hybrid_full_v1",
   "summary": {
-    "baseline": "Sequential",
-    "experiment": "phase6_sequential_hybrid_full_v1",
-    "run_version": "sequential_hybrid_full_v1",
+    "baseline": "Recency-Focused",
+    "experiment": "phase6_recency_hybrid_full_v1",
+    "run_version": "recency_hybrid_full_v1",
     "model": "llama-3.2-3b-instruct-uncensored",
     "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
     "frozen_sessions": 94,
@@ -12,11 +12,11 @@
     "successful_sessions": 94,
     "failed_sessions": 0,
     "users_in_successful_sessions": 20,
-    "method_inputs": "chronological_purchase_titles_and_frozen_candidate_titles_only",
+    "method_inputs": "chronological_purchase_titles_plus_explicit_most_recent_item_emphasis_and_frozen_candidate_titles",
     "output_protocol": {
       "primary": "direct_complete_numbered_candidate_ranking",
       "fallback_condition": "strict_direct_parser_failure_only",
-      "fallback": "fresh_sequential_candidate_rank_map_request",
+      "fallback": "fresh_recency_candidate_rank_map_request",
       "invalid_primary_shown_to_fallback": false,
       "max_fallback_requests_per_session": 1,
       "deterministic_post_generation_repair": false
@@ -34,25 +34,25 @@
       "fallback_successes": 0
     },
     "ndcg": {
-      "1": 0.07833333333333334,
-      "5": 0.19119338415282436,
-      "10": 0.22985864604036338,
-      "20": 0.3732857741554989
+      "1": 0.095,
+      "5": 0.20650509939667167,
+      "10": 0.25295161727915483,
+      "20": 0.3857992031968749
     },
     "usage_totals_all_requests": {
-      "prompt_tokens": 56233,
-      "completion_tokens": 4392,
-      "total_tokens": 60625,
+      "prompt_tokens": 60224,
+      "completion_tokens": 4479,
+      "total_tokens": 64703,
       "request_count": 94,
-      "mean_prompt_tokens": 598.2234042553191,
-      "max_prompt_tokens": 792,
-      "mean_completion_tokens": 46.723404255319146
+      "mean_prompt_tokens": 640.6808510638298,
+      "max_prompt_tokens": 849,
+      "mean_completion_tokens": 47.648936170212764
     },
     "latency": {
-      "total_request_seconds": 128.73904609999772,
-      "mean_request_seconds": 1.3695643202127417,
-      "mean_session_seconds": 1.3697092861701994,
-      "median_session_seconds": 1.3390623499999492
+      "total_request_seconds": 161.87709469999754,
+      "mean_request_seconds": 1.7220967521276334,
+      "mean_session_seconds": 1.7222759425531258,
+      "median_session_seconds": 1.669556349999766
     },
     "status": "PASS"
   },
