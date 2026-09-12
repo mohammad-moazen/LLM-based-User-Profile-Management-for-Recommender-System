@@ -1,5 +1,14 @@
 """PURE components for review-aware recommendation."""
 
+from .profile_updater import (
+    PAPER_UPDATER_INSTRUCTION,
+    UserProfile,
+    build_profile_updater_messages,
+    concatenate_profile_and_extraction,
+    parse_profile_update,
+    profile_from_mapping,
+    profile_updater_response_format,
+)
 from .review_extractor import (
     RejectedEvidenceEntry,
     ReviewEvidenceEntry,
@@ -10,10 +19,17 @@ from .review_extractor import (
 )
 
 __all__ = [
+    "PAPER_UPDATER_INSTRUCTION",
     "RejectedEvidenceEntry",
     "ReviewEvidenceEntry",
     "ReviewExtraction",
+    "UserProfile",
+    "build_profile_updater_messages",
     "build_review_extractor_messages",
+    "concatenate_profile_and_extraction",
+    "parse_profile_update",
     "parse_review_extraction",
+    "profile_from_mapping",
+    "profile_updater_response_format",
     "review_extractor_response_format",
 ]
