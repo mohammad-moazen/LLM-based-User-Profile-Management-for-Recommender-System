@@ -9,7 +9,14 @@ schema or post-processing rules. This reproduction therefore uses a conservative
 subset-preserving representation: the updater may remove entries, but every
 returned string must be an exact member of the corresponding concatenated input
 list. This prevents the updater from injecting unsupported new preference text
-while still allowing it to compact redundancy and discard conflicts.
+while still allowing it to compact redundancy and discard clear conflicts.
+
+Pilot v1 showed that a generic "preserve crucial information" instruction still
+allowed arbitrary deletion of a unique, non-conflicting entry. Pilot v2 therefore
+adds a retention-biased rule: unique evidence must be preserved unless it is a
+clear duplicate/overlap or a clear conflict. The model is not allowed to delete
+an entry merely because it seems less relevant or because a shorter profile is
+preferred.
 """
 
 from __future__ import annotations
@@ -28,10 +35,11 @@ PAPER_UPDATER_INSTRUCTION = (
 
 SYSTEM_PROMPT = (
     "You are the Profile Updater component of the PURE recommender system. "
-    "Compact the evolving user profile by removing redundant, overlapping, or "
-    "conflicting entries while preserving crucial preference information. "
+    "Compact the evolving user profile only by removing clear duplicates, clear "
+    "overlap/redundancy, or clear conflicts while preserving all other evidence. "
     "For this reproduction, you must only select from the provided strings: do "
-    "not rewrite, paraphrase, invent, or move an entry to another category."
+    "not rewrite, paraphrase, invent, or move an entry to another category. "
+    "Do not remove a unique non-conflicting entry merely to make the profile shorter."
 )
 
 
@@ -104,8 +112,8 @@ def profile_updater_response_format() -> dict[str, object]:
             "type": "array",
             "items": {"type": "string", "minLength": 1},
             "description": (
-                "Compact subset of the corresponding provided input strings; "
-                "do not introduce new text."
+                "Retention-biased compact subset of the corresponding provided "
+                "input strings; do not introduce new text."
             ),
         }
         for field_name in PROFILE_FIELDS
@@ -140,16 +148,22 @@ def build_profile_updater_messages(
     user_prompt = (
         "Paper prompt template:\n"
         f"{PAPER_UPDATER_INSTRUCTION}\n\n"
-        "Apply that update to the following categorized profile lists:\n"
+        "The strings in each category are ordered chronologically: older profile "
+        "evidence appears before newly appended evidence.\n\n"
+        "Apply the paper update to the following categorized profile lists:\n"
         f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
         "REPRODUCTION CONSTRAINTS — FOLLOW STRICTLY:\n"
-        "1. Remove redundant or overlapping entries and resolve conflicts conservatively.\n"
-        "2. Preserve crucial information.\n"
-        "3. Every output string MUST be copied exactly from the same input category.\n"
-        "4. Do not paraphrase, summarize into new wording, invent, or add outside knowledge.\n"
-        "5. Do not move strings between likes, dislikes, and key_features.\n"
-        "6. Do not return duplicate strings within a category.\n"
-        "7. Empty arrays are allowed when no entry should be retained.\n"
+        "1. Retain every unique entry by default.\n"
+        "2. Remove an entry ONLY when it is an exact duplicate, clearly redundant/overlapping with another retained entry, or clearly conflicts with other evidence.\n"
+        "3. Do NOT remove a unique non-overlapping, non-conflicting entry merely because it seems less relevant or to make the profile shorter.\n"
+        "4. For clear overlap, keep the entry that preserves the more specific/informative evidence.\n"
+        "5. For a clear direct conflict, prefer the newer evidence only when the conflict is unambiguous; if uncertain, preserve both rather than silently deleting information.\n"
+        "6. Preserve crucial information.\n"
+        "7. Every output string MUST be copied exactly from the same input category.\n"
+        "8. Do not paraphrase, summarize into new wording, invent, or add outside knowledge.\n"
+        "9. Do not move strings between likes, dislikes, and key_features.\n"
+        "10. Do not return duplicate strings within a category.\n"
+        "11. Empty arrays are allowed only when no input entry in that category should be retained under the rules above.\n"
         "Return only the structured response required by the JSON schema."
     )
     return (
