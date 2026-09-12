@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential full run PASS / FROZEN. Recency-Focused baseline implemented and ready for a 3-session pilot.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential full run PASS / FROZEN. Recency-Focused 3-session pilot PASS; full 94-session Recency run is now enabled.**
 
 The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics are therefore labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
@@ -50,7 +50,7 @@ Model policy: `docs/MODEL_RUNTIME_POLICY.md`.
 ## Phase 2 — purchased-item baselines
 Paper baselines reproduced in order:
 1. Sequential — **PASS / FROZEN**
-2. Recency-Focused — implemented, 3-session pilot pending
+2. Recency-Focused — **3-session pilot PASS; full run enabled**
 3. ICL — pending
 
 The paper does not publish every exact prompt/output schema detail, so explicit reproduction choices are documented separately.
@@ -92,16 +92,33 @@ Implemented files:
 - `scripts/run_phase2_recency.py`
 - `tests/test_recency_baseline.py`
 
-The Recency-Focused implementation preserves the exact frozen users, histories, targets, candidate sets, parser, metric, model, and generation settings from Sequential. Its only recommendation-behavior change is explicit recency emphasis in the prompt.
+The implementation preserves the exact frozen users, histories, targets, candidate sets, parser, metric, model, and generation settings from Sequential. Its only recommendation-behavior change is explicit recency emphasis in the prompt.
 
-Initial Recency pilot settings:
-- first 3 frozen sessions
+### Validated Recency pilot
+The first 3 frozen sessions completed successfully:
+- successful sessions: 3
+- failed sessions: 0
+- users represented: 2
+- NDCG@1: 0.250000
+- NDCG@5: 0.250000
+- NDCG@10: 0.250000
+- NDCG@20: 0.443641
+- total reported tokens: 2,085
+- mean latency: 1.399 seconds/session
+- status: PASS
+
+These three-session metrics are diagnostic only and are not used as the final Recency performance estimate.
+
+### Full Recency run configuration
+Checked-in `config/phase2_recency.toml` now uses:
+- `max_sessions = 0` -> all 94 frozen sessions
+- `resume = true` -> the 3 successful pilot sessions are skipped automatically
+- `fail_fast = false` -> one malformed response does not discard progress
 - temperature: 0.0
 - max output tokens: 512
 - generation seed: 42
-- resume: true
-- fail-fast: true
-- output directory: `outputs/phase2_recency/`
+
+Invalid outputs remain excluded from NDCG. Recency is frozen only after all 94 sessions are successful and the summary reports `PASS`.
 
 ## Current implementation status
 Completed:
@@ -114,19 +131,20 @@ Completed:
 - local OpenAI-compatible client and proxy-safe transport
 - local inference smoke test
 - robust numbered-candidate output interface
-- Sequential baseline 3-session pilot
-- Sequential full 94-session run
+- Sequential baseline pilot and full 94-session run
 - Sequential result freeze
 - Recency-Focused prompt, config, runner, tests, and protocol documentation
+- Recency-Focused 3-session real-data pilot: PASS
 
 Pending next:
-1. Pull current changes.
-2. Run the full unit-test suite.
-3. Run `python scripts/run_phase2_recency.py` for the 3-session pilot.
-4. If 3/3 pass, switch Recency to all 94 sessions and record NDCG@1/@5/@10/@20.
-5. Freeze Recency-Focused.
-6. Implement ICL using the paper's `t-2` history plus demonstrated recent item at `t-1`.
-7. Then begin Review Extractor, Profile Updater, and full PURE.
+1. Pull the full-run Recency configuration.
+2. Keep the local model server active.
+3. Run `python scripts/run_phase2_recency.py` across all 94 frozen sessions.
+4. If the summary is `INCOMPLETE`, rerun to retry only failed sessions and investigate persistent failures.
+5. When 94/94 pass, freeze final Recency NDCG@1/@5/@10/@20, token usage, and latency.
+6. Compare frozen Sequential and Recency results.
+7. Implement ICL using the paper's recent-item demonstration setup.
+8. Then begin Review Extractor, Profile Updater, and full PURE.
 
 ## Working rule
 This file is the authoritative current snapshot. Important experiment results are preserved in dedicated result/protocol documents. Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked.
