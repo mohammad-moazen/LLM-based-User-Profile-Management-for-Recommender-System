@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential PASS / FROZEN. Recency-Focused PASS / FROZEN. ICL 3-session pilot PASS; full 94-session ICL run is now enabled.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 Sequential PASS / FROZEN. Recency-Focused PASS / FROZEN. ICL full run reached 93/94 valid sessions and is INCOMPLETE pending one-session retry.**
 
 The user has explicitly chosen to continue with the local derivative model `llama-3.2-3b-instruct-uncensored`. Current Phase 2 metrics are therefore labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` backbone results.
 
@@ -44,17 +44,30 @@ Confirmed:
 - `GET /v1/models`: PASS
 - Python chat completion through localhost: PASS
 - localhost proxy interception bug fixed
-- numbered-candidate JSON ranking interface validated across complete 94-session runs
+- numbered-candidate JSON ranking interface validated across complete 94-session Sequential and Recency runs
 
 Active model:
 - `llama-3.2-3b-instruct-uncensored`
 
-Model policy: `docs/MODEL_RUNTIME_POLICY.md`.
+Model/runtime policy: `docs/MODEL_RUNTIME_POLICY.md`.
+
+### Runtime memory observation
+The user observed that `llama-server.exe` system-RAM usage grows across repeated experiment runs instead of returning to its initial level.
+
+Current working interpretation:
+- modern llama.cpp servers can retain RAM-backed prompt/slot caches across requests;
+- this may explain at least part of the cumulative-looking RAM growth;
+- a runtime memory leak is not ruled out solely from the observation;
+- do not change cache policy in the middle of the current partially completed ICL baseline;
+- restart the local server to clear process-local caches, then use resume to retry only the failed ICL session;
+- after ICL completion, establish one fixed cache policy for final cross-baseline comparisons and, if cache behavior is changed, rerun all compared baselines under that same policy.
+
+For a later clean-runtime pass, preferred direct llama-server options, when supported by the installed build, are `--cache-ram 0 --no-cache-idle-slots --no-cache-prompt`. Exact runtime/cache settings must be recorded.
 
 ## Phase 2 purchased-item baselines
 1. Sequential — **PASS / FROZEN**
 2. Recency-Focused — **PASS / FROZEN**
-3. In-Context Learning (ICL) — **3-session pilot PASS; full run enabled**
+3. In-Context Learning (ICL) — **93/94 valid; INCOMPLETE**
 
 All three baselines reuse the same frozen users, sessions, candidate sets, targets, NDCG implementation, model, temperature, and generation seed. The baseline-specific difference is prompt framing.
 
@@ -144,16 +157,27 @@ The first 3 frozen sessions completed successfully:
 
 These three-session metrics are diagnostic only and are not used as the final ICL performance estimate.
 
-### Full ICL run configuration
-Checked-in `config/phase2_icl.toml` now uses:
-- `max_sessions = 0` -> all 94 frozen sessions
-- `resume = true` -> the 3 successful pilot sessions are skipped automatically
-- `fail_fast = false` -> one malformed response does not discard progress
-- temperature: 0.0
-- max output tokens: 512
-- generation seed: 42
+### First full ICL run — incomplete
+The first attempt across all frozen sessions produced:
+- successful sessions: 93
+- failed sessions: 1
+- users represented: 20
+- NDCG@1: 0.061667
+- NDCG@5: 0.186527
+- NDCG@10: 0.256132
+- NDCG@20: 0.371559
+- total reported tokens from successful sessions: 66,209
+- mean latency across successful sessions: 1.343 seconds/session
+- status: INCOMPLETE
 
-Invalid outputs remain excluded from NDCG. ICL is frozen only after all 94 sessions are successful and the summary reports `PASS`.
+These ICL NDCG values are provisional because one frozen session is missing. They must not be frozen or compared as the final ICL result.
+
+The checked-in ICL configuration remains:
+- `max_sessions = 0`
+- `resume = true`
+- `fail_fast = false`
+
+Therefore, after restarting the local model server, rerunning `python scripts/run_phase2_icl.py` should skip the 93 successful sessions and retry only the failed session. If the retry fails again, capture the session id, parser/runtime error, and raw model response for diagnosis.
 
 ## Current implementation status
 Completed:
@@ -166,15 +190,17 @@ Completed:
 - Sequential 94-session full run and result freeze
 - Recency-Focused 94-session full run and result freeze
 - ICL prompt builder, config, runner, tests, protocol documentation
-- ICL 3-session real-data pilot: PASS
+- ICL 3-session pilot: PASS
+- ICL first full run: 93/94 valid, INCOMPLETE
+- llama-server cumulative RAM behavior recorded for runtime follow-up
 
 Pending next:
-1. Pull the full-run ICL configuration.
-2. Keep the local model server active.
-3. Run `python scripts/run_phase2_icl.py` across all 94 frozen sessions.
-4. If the summary is `INCOMPLETE`, rerun to retry only failed sessions and investigate persistent failures.
-5. When 94/94 pass, freeze final ICL NDCG@1/@5/@10/@20, token usage, and latency.
-6. Compare Sequential, Recency-Focused, and ICL on the same frozen pilot.
+1. Restart the local LLM server to clear process-local RAM/cache state without changing model/generation settings.
+2. Rerun `python scripts/run_phase2_icl.py`; resume should retry only the single failed session.
+3. If 94/94 pass, freeze final ICL NDCG/token/latency values.
+4. If the same session fails again, inspect its exact raw response/error before changing prompt logic.
+5. After ICL freeze, choose and document one fixed llama-server cache policy for reproducibility.
+6. If cache policy changes, rerun Sequential, Recency-Focused, and ICL under the same clean runtime policy before using them as the final cross-baseline comparison.
 7. Then implement review-aware baselines and PURE components: Review Extractor, Profile Updater, and full recommender.
 
 ## Working rule
