@@ -23,26 +23,27 @@ class ReviewExtractorTests(unittest.TestCase):
         self.interaction = {
             "user_id": "u1",
             "asin": "B000TEST01",
-            "title": "Example Gaming Mouse",
+            "title": "RGB Wired Example Gaming Mouse",
             "review_text": "I love the light weight and precise sensor, but the cable feels stiff.",
             "rating": 4.0,
             "timestamp": 123456789,
         }
 
-    def test_prompt_contains_paper_relevant_review_context(self):
+    def test_prompt_contains_paper_relevant_review_context_and_strict_grounding_rules(self):
         messages = build_review_extractor_messages(self.interaction)
         prompt = messages[1]["content"]
         system_prompt = messages[0]["content"]
         self.assertIn("B000TEST01", prompt)
-        self.assertIn("Example Gaming Mouse", prompt)
+        self.assertIn("RGB Wired Example Gaming Mouse", prompt)
         self.assertIn("Rating: 4", prompt)
         self.assertIn("light weight and precise sensor", prompt)
         self.assertIn("likes/dislikes/key features", prompt)
-        self.assertIn("Ground every extracted entry in the REVIEW text itself", prompt)
-        self.assertIn("Do not extract a feature merely because it appears in the product name", prompt)
-        self.assertIn("Do not create a specific preference or feature from the rating alone", prompt)
-        self.assertIn("product name", system_prompt)
-        self.assertIn("not independent evidence", system_prompt)
+        self.assertIn("REVIEW TEXT between the markers is the only evidence source", prompt)
+        self.assertIn("VERBATIM QUOTE", prompt)
+        self.assertIn("Never copy a feature merely because it appears in the product name", prompt)
+        self.assertIn("Never invent a preference from the numeric rating", prompt)
+        self.assertIn("NEVER evidence", system_prompt)
+        self.assertIn("verbatim quote", system_prompt)
         self.assertNotIn("123456789", prompt)
         self.assertNotIn("u1", prompt)
 
@@ -62,18 +63,41 @@ class ReviewExtractorTests(unittest.TestCase):
 
     def test_parser_accepts_complete_structured_output(self):
         extraction = parse_review_extraction(
-            '{"likes":["lightweight mouse"],'
-            '"dislikes":["stiff cable"],'
-            '"key_features":["precise sensor"]}'
+            '{"likes":["light weight"],'
+            '"dislikes":["cable feels stiff"],'
+            '"key_features":["precise sensor"]}',
+            source_review=self.interaction["review_text"],
         )
-        self.assertEqual(extraction.likes, ("lightweight mouse",))
-        self.assertEqual(extraction.dislikes, ("stiff cable",))
+        self.assertEqual(extraction.likes, ("light weight",))
+        self.assertEqual(extraction.dislikes, ("cable feels stiff",))
         self.assertEqual(extraction.key_features, ("precise sensor",))
+
+    def test_grounding_validation_is_case_and_whitespace_tolerant(self):
+        extraction = parse_review_extraction(
+            '{"likes":["LIGHT   WEIGHT"],"dislikes":[],"key_features":[]}',
+            source_review=self.interaction["review_text"],
+        )
+        self.assertEqual(extraction.likes, ("LIGHT   WEIGHT",))
+
+    def test_parser_rejects_title_only_feature_when_source_review_is_supplied(self):
+        with self.assertRaisesRegex(ValueError, "non-verbatim or non-review-grounded"):
+            parse_review_extraction(
+                '{"likes":[],"dislikes":[],"key_features":["RGB Wired"]}',
+                source_review=self.interaction["review_text"],
+            )
+
+    def test_parser_rejects_paraphrase_when_source_review_is_supplied(self):
+        with self.assertRaisesRegex(ValueError, "non-verbatim or non-review-grounded"):
+            parse_review_extraction(
+                '{"likes":["lightweight mouse"],"dislikes":[],"key_features":[]}',
+                source_review=self.interaction["review_text"],
+            )
 
     def test_parser_preserves_duplicate_entries_for_later_updater(self):
         extraction = parse_review_extraction(
             '{"likes":["precise sensor","precise sensor"],'
-            '"dislikes":[],"key_features":[]}'
+            '"dislikes":[],"key_features":[]}',
+            source_review=self.interaction["review_text"],
         )
         self.assertEqual(
             extraction.likes,
