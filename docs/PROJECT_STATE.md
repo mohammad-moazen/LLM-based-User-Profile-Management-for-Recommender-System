@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 PURE Review Extractor is implemented and ready for a 3-review real-data pilot.**
+**Phase 1 frozen / PASS. Local LLM infrastructure PASS. Phase 2 purchased-item baselines (Sequential, Recency-Focused, ICL) are all PASS / FROZEN. Local runtime memory profile is validated and stable. Phase 3 Review Extractor pilot v1 passed technically but exposed title-only feature extraction; prompt-grounding refinement is implemented and pilot v2 is ready on the same 3 reviews.**
 
 The active model is the local derivative model `llama-3.2-3b-instruct-uncensored`. Metrics from this model are labeled **local derivative-model results**, not exact reproduction of the paper's `Llama-3.2-3B-Instruct` checkpoint.
 
@@ -117,7 +117,7 @@ Detailed record: `docs/RUNTIME_MEMORY_STABILITY.md`.
 
 Comparison record: `docs/PHASE2_BASELINE_COMPARISON.md`.
 
-## Phase 3 PURE Review Extractor — pilot ready
+## Phase 3 PURE Review Extractor
 Protocol: `docs/PHASE3_REVIEW_EXTRACTOR_PROTOCOL.md`.
 
 Paper-derived component behavior:
@@ -133,28 +133,39 @@ Active reproduction choices are explicit:
 - exact JSON schema is project-defined because the paper does not publish it;
 - schema keys are `likes`, `dislikes`, and `key_features`, each an array of strings;
 - extractor output is not deduplicated or semantically repaired; redundancy/conflict handling is reserved for Profile Updater;
-- extraction tasks are derived from frozen sessions so a target review is never available before its purchase occurs.
+- extraction tasks are derived from frozen sessions so a target review is never available before its purchase occurs;
+- the 94 frozen sessions require 134 unique historical review extractions.
 
-Implemented files:
-- `config/phase3_review_extractor.toml`
-- `src/pure_recommender/pure/review_extractor.py`
-- `src/pure_recommender/phase3/config.py`
-- `src/pure_recommender/phase3/tasks.py`
-- `scripts/run_phase3_review_extractor.py`
-- `tests/test_review_extractor.py`
-- `tests/test_phase3_review_tasks.py`
+### Pilot v1 — technical PASS / semantic refinement required
+The first 3 real review extractions completed successfully:
+- successful extractions: 3
+- failed extractions: 0
+- users represented: 1
+- likes entries: 8
+- dislikes entries: 2
+- key-feature entries: 10
+- total reported tokens: 1,063
+- mean latency: 2.109 seconds
+- schema/transport status: PASS
 
-Initial pilot settings:
-- first 3 unique historical reviews required by the frozen sessions
-- `max_extractions = 3`
-- `resume = true`
-- `fail_fast = true`
-- temperature: 0.0
-- max output tokens: 512
-- generation seed: 42
-- structured output: JSON Schema through the local OpenAI-compatible endpoint
+Qualitative inspection found a semantic issue: for Review 1, `Cherry MX Red switches` and `RGB LED lighting` were copied from the product title although the review text did not discuss them; for Review 2, `backlit keyboard`, `wired connection`, `gaming mouse`, and `white color` were similarly title-derived rather than review-grounded. Review 3 was largely grounded.
 
-Pilot acceptance requires 3/3 schema-valid outputs plus qualitative inspection that extracted likes/dislikes/key features are grounded in the supplied real review text.
+This is not out-of-input hallucination because the product title was visible, but it is too weakly grounded for an evolving user-preference profile. Pilot v1 is retained for auditability and is not the accepted extraction set.
+
+Detailed record: `docs/PHASE3_REVIEW_EXTRACTOR_PILOT_V1.md`.
+
+### Pilot v2 — ready
+The extractor prompt now explicitly requires every preference/key-feature entry to be grounded in the review text itself:
+- ASIN/title are identity context only;
+- rating is overall sentiment context only;
+- a title-only attribute must not be extracted unless the review also mentions or clearly describes it;
+- empty arrays are preferred over unsupported entries.
+
+The same 3 reviews will be rerun with unchanged model/generation/runtime settings into a fresh directory:
+
+`outputs/phase3_review_extractor_v2/`
+
+This prevents resume from reusing v1 results and preserves the original pilot artifacts.
 
 ## Reproducibility note for final comparisons
 The three currently frozen purchased-item baselines were collected before the stable runtime-throughput profile above was finalized. Keep them as valid historical/frozen experiment records.
@@ -176,15 +187,17 @@ Completed:
 - local runtime memory-stability validation and finalized load profile
 - structured JSON-Schema request support in the local LLM client
 - PURE Review Extractor prompt/schema/parser, leakage-safe task builder, config, runner, tests, and protocol documentation
+- Phase 3 Review Extractor pilot v1 technical run and qualitative inspection
+- review-grounding prompt refinement and isolated pilot-v2 output configuration
 
 ## Next actions
 1. Pull the current branch.
 2. Run the full unit-test suite.
 3. Keep LM Studio loaded with the finalized stable runtime profile.
-4. Run `python scripts/run_phase3_review_extractor.py` for the first 3 real review extractions.
-5. Inspect both schema validity and semantic grounding of the three extracted representations.
-6. If the pilot is clean, enable all required unique review extractions with resume.
-7. Freeze the Review Extractor outputs needed by the 94 sessions.
+4. Run `python scripts/run_phase3_review_extractor.py` for pilot v2 on the same first 3 reviews.
+5. Run `python scripts/inspect_phase3_review_extractor_pilot.py` and verify that title-only features have disappeared unless supported by the review.
+6. If pilot v2 is clean, enable all 134 unique review extractions with resume.
+7. Freeze the accepted Review Extractor outputs needed by the 94 sessions.
 8. Implement Profile Updater and then the PURE recommender.
 9. Before the final thesis comparison table, rerun all compared methods under the same finalized runtime profile.
 
