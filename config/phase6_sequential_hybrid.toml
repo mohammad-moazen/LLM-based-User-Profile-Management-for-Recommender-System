@@ -1,0 +1,24 @@
+# Final controlled Sequential baseline rerun for the thesis comparison.
+#
+# This run uses the same frozen 94 Phase 1 sessions, finalized local generation
+# settings, and the same hybrid mechanical output policy adopted by the final
+# PURE recommender. The Sequential method itself still sees ONLY chronological
+# purchased-item titles plus the frozen candidate titles.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[experiment]
+max_sessions = 0
+resume = false
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase6_sequential_hybrid_final_v1"
