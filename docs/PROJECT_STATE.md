@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from the paper **LL
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor is thesis-grade PASS / FROZEN with one clean homogeneous 134/134 run. Phase 4 Profile Updater pilot v1 technically passed but its deletion policy was not accepted; pilot v2 is now configured with a retention-biased policy and broader qualitative coverage.**
+**Phase 1 PASS / FROZEN. Local LLM/runtime finalized. Phase 2 purchased-item baselines are historical PASS / FROZEN. Phase 3 Review Extractor is thesis-grade PASS / FROZEN with one clean homogeneous 134/134 run. Phase 4 Profile Updater pilots v1 and v2 were not accepted as final policy; pilot v3 is now configured with ID-only model selection plus a deterministic retention guard.**
 
 The active model is the local derivative `llama-3.2-3b-instruct-uncensored`; LM Studio reports GGUF `Q8_0` (~3.84 GB). Results are local derivative-model results, not exact reproduction of the paper checkpoint.
 
@@ -65,12 +65,8 @@ Final source artifact:
 
 `outputs/phase3_review_extractor_final_1024/`
 
-Every required extraction was regenerated from scratch under the same final prompt/schema/parser, generation configuration, and finalized runtime.
-
 Final result:
-- required: 134
-- successful: 134
-- failed: 0
+- required / successful / failed: 134 / 134 / 0
 - users: 20
 - likes: 240
 - dislikes: 98
@@ -89,7 +85,7 @@ Final result:
 - max tokens: 1024
 - status: PASS / FROZEN
 
-Downstream Profile Updater consumes only accepted `extraction` objects from this final artifact. Historical v5 and the 133/134 512-token clean attempt remain audit/development artifacts only.
+Downstream Profile Updater consumes only accepted `extraction` objects from this final artifact.
 
 Detailed final record: `docs/PHASE3_REVIEW_EXTRACTOR_FINAL_HOMOGENEOUS_RESULTS.md`.
 Protocol: `docs/PHASE3_REVIEW_EXTRACTOR_PROTOCOL.md`.
@@ -100,35 +96,47 @@ Paper behavior: concatenate the previous profile with newly extracted likes/disl
 Published updater prompt:
 `You are given a list: {list}. Update this list by removing redundant or overlapping information. Note that crucial information should be preserved.`
 
-### Reproduction contract
-- profile starts empty;
-- updates are chronological and leakage-safe;
-- only the final frozen extractor evidence is input;
-- structured output contains `likes`, `dislikes`, `key_features`;
-- every returned string must be an exact member of the same-category concatenated input;
-- no paraphrase, new text, outside knowledge, cross-category movement, duplicate output, or silent repair;
-- parser rejects unsupported output.
-
 ### Pilot v1 — TECHNICAL PASS / POLICY NOT ACCEPTED
-Pilot v1 ran 3 chronological updates for user `A174LCVSHN24BT`:
-- successful: 3/3
-- failed: 0
-- total tokens: 1,424
-- mean latency: 2.840 s/update
+- 3/3 successful updates
+- 0 technical failures
+- 1,424 total tokens
+- 2.840 s mean latency/update
 
-Technical validation succeeded, but update 2 deleted the unique like `Arrived even faster than i expected.` even though it was neither a duplicate nor an obvious overlap/direct conflict. This showed that the generic compacting instruction could over-compress the profile beyond the paper-supported operation. Therefore v1 is not accepted for the full run.
+The model deleted the unique like `Arrived even faster than i expected.` despite no obvious duplicate/overlap/conflict. Prompt-only compaction was therefore not accepted.
 
 Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V1.md`.
 
-### Pilot v2 — READY
-The exact-subset validator is retained, but the prompt is now retention-biased:
-- retain unique evidence by default;
-- remove only exact duplicates, clear redundancy/overlap, or clear direct conflicts;
-- do not delete unique non-conflicting evidence merely because it seems less relevant or to shorten the profile;
-- for clear overlap, keep the more specific/informative source string;
-- for an unambiguous direct conflict, newer evidence may supersede older evidence; if uncertain, preserve both.
+### Pilot v2 — INCOMPLETE / POLICY NOT ACCEPTED
+Pilot v2 strengthened the instruction to retain unique evidence and expanded coverage to 2 users × 4 updates.
 
-Pilot v2 coverage:
+Observed before fail-fast stop:
+- successful updates: 4
+- failed updates: 1
+- successful-update tokens: 2,626
+- mean successful-update latency: 2.856 s
+
+Problems:
+1. arbitrary unique deletion persisted. At the first user's update 2, both `Arrived even faster than i expected.` and `If you like really challenging games you should get it.` were omitted without mechanically defensible overlap with the retained like;
+2. at the second user's first update, the model shortened a key-feature string, violating the exact-subset contract. The parser correctly rejected it.
+
+One deletion was clearly defensible: `It has a lot of charm and it is challenging enough.` was overlapped by the retained longer string `Beautiful game. It has a lot of charm and it is challenging enough.`.
+
+Detailed record: `docs/PHASE4_PROFILE_UPDATER_PILOT_V2.md`.
+
+### Pilot v3 — READY
+Pilot v3 keeps the paper-derived chronological LLM update but hardens the interface:
+- every concatenated entry receives a deterministic same-category ID (`L...`, `D...`, `K...`);
+- the model returns IDs only, so it cannot rewrite evidence text;
+- the dynamic JSON schema constrains each category to its own valid IDs;
+- after model selection, a deterministic retention guard evaluates every omitted unique string;
+- deletion is allowed only when a retained same-category string has exact/clear lexical overlap;
+- otherwise the omitted unique entry is automatically restored;
+- exact duplicate inputs collapse safely to one occurrence;
+- all model selections, guard restorations, guard-allowed removals, and final removals are logged.
+
+This guard is an explicit conservative reproduction choice because the paper does not publish its exact schema or deletion/conflict validator. Semantic conflicts without sufficient lexical overlap are preserved rather than risking unsupported information loss.
+
+Pilot v3 coverage:
 - deterministic 2 eligible users;
 - first 4 chronological updates each;
 - 8 expected updates total;
@@ -136,9 +144,7 @@ Pilot v2 coverage:
 - seed 42;
 - max tokens 1024;
 - runtime 512 / 256 / 1;
-- output: `outputs/phase4_profile_updater_pilot_v2/`.
-
-The runner now publishes the exact concatenated profile, updated profile, and mechanically computed removed strings for every category/update so every deletion can be audited qualitatively.
+- output: `outputs/phase4_profile_updater_pilot_v3/`.
 
 Protocol: `docs/PHASE4_PROFILE_UPDATER_PROTOCOL.md`.
 
@@ -150,8 +156,8 @@ Protocol: `docs/PHASE4_PROFILE_UPDATER_PROTOCOL.md`.
 2. Run the unit-test suite.
 3. Keep LM Studio on finalized `512 / 256 / 1`.
 4. Run `python scripts/run_phase4_profile_updater_pilot_safe.py`.
-5. Review all 8 updates and every removed string from the handoff.
-6. If pilot v2 removals are defensible and all updates pass, implement/freeze the full chronological Profile Updater state cache.
+5. Review all 8 v3 updates, especially `guard_restored_entries` and final `removed_entries`.
+6. If v3 is technically clean and final removals are mechanically defensible, freeze the Profile Updater policy and implement the full chronological state cache.
 7. Implement PURE recommender and evaluate it on the frozen 94 sessions.
 8. Rerun final comparison baselines under the finalized runtime/protocol.
 
