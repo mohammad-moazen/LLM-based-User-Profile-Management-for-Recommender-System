@@ -1,11 +1,42 @@
 {
-  "state": "READY",
-  "experiment": "phase10_hardware_preflight_v1_attempt2",
-  "note": "The first synthetic hardware preflight encountered a context-size error before any confirmatory-cohort LLM call. The revised run tests only short-context concurrency. Keep Max Concurrent Predictions at 2 and all other frozen settings unchanged, then rerun the safe preflight script.",
-  "phase9_freeze": {
-    "new_users": 150,
-    "recommendation_sessions": 767,
-    "cohort_manifest_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
-    "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+  "state": "RESULT",
+  "experiment": "phase10_hardware_preflight_v1",
+  "summary": {
+    "status": "PASS",
+    "confirmatory_llm_calls": 0,
+    "phase9_freeze": {
+      "users": 150,
+      "sessions": 767,
+      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+    },
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "decision": {
+      "accepted": false,
+      "recommended_max_concurrent_predictions": 1,
+      "exact_matches": 5,
+      "probe_count": 8,
+      "exact_match_rate": 0.625,
+      "sequential_wall_seconds": 27.742885399999068,
+      "concurrent_wall_seconds": 12.918759500000306,
+      "throughput_speedup": 2.1474883405019196,
+      "peak_vram_used_mib": 4463.0,
+      "vram_total_mib": 8188.0,
+      "peak_vram_fraction": 0.5450659501709819,
+      "vram_check_available": true,
+      "rejection_reasons": [
+        "concurrent_outputs_not_exactly_repeatable"
+      ]
+    },
+    "gpu_monitor": {
+      "available": true,
+      "samples": 163,
+      "peak_vram_used_mib": 4463.0,
+      "vram_total_mib": 8188.0,
+      "peak_gpu_util_percent": 100.0,
+      "mean_gpu_util_percent": 79.85889570552148,
+      "peak_power_watts": 34.18,
+      "peak_temperature_c": 66.0
+    }
   }
 }
