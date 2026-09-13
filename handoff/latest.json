@@ -1,41 +1,74 @@
 {
-  "state": "READY",
+  "state": "RESULT",
   "experiment": "phase10_confirmatory_profile_updater_v2",
   "confirmatory_recommendation_outcomes_inspected": false,
   "summary": {
-    "status": "READY",
-    "reason": "Profile Updater v1 was abandoned after a persistent exact duplicate-ID structural defect. v2 restarts all 1067 updates under one homogeneous policy.",
-    "v1_states_reused": false,
-    "expected_users": 150,
+    "component": "Profile Updater",
+    "run_version": "confirmatory_homogeneous_v2",
+    "status": "INCOMPLETE",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "users": 150,
     "expected_updates": 1067,
-    "policy": "exact_duplicate_id_canonicalization_v2",
-    "canonicalization_scope": "only repeated occurrences of the same valid selected ID within the same category",
-    "strict_failures_remain": [
-      "unknown_or_cross_category_id",
-      "wrong_keys",
-      "malformed_json",
-      "invalid_types",
-      "retention_guard_failure"
-    ],
+    "successful_updates": 839,
+    "failed_updates": 1,
+    "usage_totals": {
+      "prompt_tokens": 927146,
+      "completion_tokens": 91433,
+      "total_tokens": 1018579,
+      "max_prompt_tokens": 7480,
+      "max_prompt_task_id": "A6UW2KEO5UOSA:25"
+    },
+    "guard_totals": {
+      "restored_entries": 5751,
+      "allowed_removals": 62
+    },
+    "canonicalization": {
+      "policy": "exact_duplicate_id_canonicalization_v2",
+      "responses_with_exact_duplicate_ids": 1,
+      "duplicate_id_occurrences_removed": 1,
+      "semantic_note": "Repeated occurrences of the same valid selected ID are collapsed; no distinct ID is ignored or inferred."
+    },
+    "latency": {
+      "total_seconds": 2530.9683543000065,
+      "mean_seconds": 3.0166488132300433,
+      "median_seconds": 1.9333081000004313
+    },
     "generation": {
       "temperature": 0.0,
       "max_tokens": 1024,
       "seed": 42
     },
     "runtime_max_concurrent_predictions": 1,
-    "max_attempts_per_task": 3,
-    "output_directory": "outputs/phase10_confirmatory_profile_updater_v2",
+    "validation": "exact_duplicate_id_canonicalization_then_strict_parser_plus_information_preserving_guard_v4",
+    "retry_policy": {
+      "max_attempts_per_task": 3,
+      "no_semantic_response_repair": true
+    },
+    "homogeneity": {
+      "v1_states_reused": false,
+      "all_1067_states_must_use_same_v2_policy": true,
+      "introduced_before_confirmatory_recommendation_outcomes": true
+    },
+    "resume": {
+      "enabled": true,
+      "new_llm_calls_this_invocation": 842,
+      "new_successes_this_invocation": 839
+    },
     "phase9_freeze": {
       "users": 150,
       "sessions": 767,
       "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
       "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
     },
-    "run": [
-      "git pull",
-      "$env:PYTHONPATH=\"$PWD\\src\"",
-      "python -m unittest discover -s tests -v",
-      "python scripts/run_phase10_confirmatory_profile_updater_v2_safe.py"
-    ]
-  }
+    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v2\\profile_states.jsonl"
+  },
+  "unresolved": [
+    {
+      "task_id": "A6UW2KEO5UOSA:26",
+      "user_id": "A6UW2KEO5UOSA",
+      "interaction_position": 26,
+      "error": "Profile Updater response does not contain a JSON object"
+    }
+  ]
 }
