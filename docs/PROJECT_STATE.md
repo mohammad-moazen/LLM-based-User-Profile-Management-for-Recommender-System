@@ -7,9 +7,9 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Core reproduction pipeline PASS / FROZEN. Phase 7 thesis analysis PASS / FROZEN. Phase 8 power planning PASS / FROZEN. Phase 9 confirmatory NEW-user cohort design PASS / FROZEN. Phase 10A synthetic hardware-saturation preflight is READY. No confirmatory-cohort LLM output has been observed yet.**
+**Core reproduction pipeline PASS / FROZEN. Phase 7 thesis analysis PASS / FROZEN. Phase 8 power planning PASS / FROZEN. Phase 9 confirmatory NEW-user cohort design PASS / FROZEN. Phase 10A hardware preflight completed: the two-worker runtime was rejected on repeatability grounds. Phase 10B1 confirmatory Review Extractor is READY.**
 
-Active model used for the frozen experiments: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
+Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
 ## Frozen pilot workload and runtime
 - pilot workload: 20 users, 94 continuous recommendation sessions
@@ -17,7 +17,7 @@ Active model used for the frozen experiments: local derivative `llama-3.2-3b-ins
 - Context Length 8192
 - Evaluation Batch 512
 - Physical Batch 256
-- Max Concurrent 1 for the frozen pilot runs
+- Max Concurrent Predictions 1
 - temperature 0.0 and generation seed 42 for final Phase 3/4/5/6 experiments
 - max output tokens 512 for recommenders; 1024 for Review Extractor/Profile Updater
 
@@ -55,11 +55,10 @@ Detailed result: `docs/PHASE8_POWER_ANALYSIS_RESULTS.md`.
 
 ## Phase 9 — Confirmatory NEW-user cohort design — PASS / FROZEN
 
-Phase 9 made **zero LLM calls** and froze the confirmatory cohort before any new effectiveness outcome was observed.
+Phase 9 made zero LLM calls and froze the confirmatory cohort before any new effectiveness outcome was observed.
 
-Frozen confirmatory design:
+Frozen design:
 - new users: **150**
-- original pilot users excluded: **20**
 - pilot overlap: **0**
 - selected deterministic eligible-user ranks: **21 through 170**
 - user-selection seed: `20260905`
@@ -68,54 +67,77 @@ Frozen confirmatory design:
 - recommendation sessions: **767**
 - profile evidence events: **1,067**
 - history length min/mean/max: **4 / 8.1133 / 35**
-- required primary methods: **PURE and Recency-Focused**
+- primary methods: **PURE and Recency-Focused**
 - primary endpoint: **NDCG@10**, alpha 0.05 two-sided
 
 Freeze identifiers:
 - cohort manifest SHA256: `72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca`
 - sessions/candidates SHA256: `0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859`
 
-Empirical compute estimate for required PURE + Recency-Focused scope:
+Empirical one-worker estimate for required PURE + Recency-Focused scope:
 - estimated LLM requests: **~3,676**
 - estimated total reported tokens: **~3.48 million**
-- estimated local inference time at the previous one-worker profile: **~3.34 hours**
+- estimated local inference time: **~3.34 hours**
 
 Protocol: `docs/PHASE9_CONFIRMATORY_COHORT_PROTOCOL.md`.
 Detailed result: `docs/PHASE9_CONFIRMATORY_COHORT_RESULTS.md`.
 Authoritative local output: `outputs/phase9_confirmatory_cohort_v1/`.
 
-## Phase 10A — Synthetic hardware-saturation preflight — READY
+## Phase 10A — Hardware saturation preflight — COMPLETE
 
-Purpose: determine whether **Max Concurrent Predictions = 2** can reduce Phase 10 wall-clock time without inspecting confirmatory outcomes.
+The revised synthetic preflight completed successfully and made zero confirmatory-cohort LLM calls.
 
-Scientific isolation:
-- synthetic prompts only;
-- no confirmatory review/profile/candidate/target content is sent to the model;
-- Phase 9 hashes are recomputed and verified before the benchmark;
-- model, temperature, seed, context, batch sizes, GPU offload, Flash Attention and output schema remain unchanged.
+Measured two-worker candidate:
+- probes: 8
+- sequential wall time: **27.7429 s**
+- two-worker wall time: **12.9188 s**
+- throughput speedup: **2.1475x**
+- exact sequential/concurrent structured-output matches: **5/8 (62.5%)**
+- peak VRAM: **4463 / 8188 MiB (54.5%)**
+- peak GPU utilization: **100%**
+- mean sampled GPU utilization: **79.86%**
+- peak temperature: **66 C**
 
-Two-worker acceptance gates:
-- exact canonical structured-output match for every sequential/concurrent probe pair;
-- throughput speedup at least **1.15x**;
-- no benchmark failure;
-- peak VRAM at or below **97%** when `nvidia-smi` telemetry is available.
+Decision: **two workers REJECTED** because exact-output repeatability failed the pre-declared 100% gate. The confirmatory execution returns to **Max Concurrent Predictions = 1**. The speed gain is not used because runtime-dependent model-output changes would weaken the controlled comparison.
 
-Before running the preflight, set only **LM Studio Max Concurrent Predictions = 2**. Keep all other accepted runtime settings unchanged. If the candidate fails, restore Max Concurrent to 1. If it passes, Phase 10B will be implemented with two workers only where dependencies permit; profile updates remain serial within each user.
+Detailed result: `docs/PHASE10_HARDWARE_PREFLIGHT_RESULTS.md`.
+Protocol: `docs/PHASE10_HARDWARE_PREFLIGHT_PROTOCOL.md`.
+
+## Phase 10 — Confirmatory execution
+
+Protocol: `docs/PHASE10_CONFIRMATORY_EXECUTION_PROTOCOL.md`.
+
+### Phase 10B1 — Review Extractor — READY
+
+This is the first stage that will process the 150-user confirmatory cohort with the LLM.
+
+Guards before the first call:
+- recompute/verify both frozen Phase 9 SHA256 identifiers;
+- require exactly 150 users and 767 frozen sessions;
+- require exactly **1,067** historical Review Extractor tasks;
+- consume the frozen Phase 9 sessions directly;
+- no user/candidate regeneration;
+- runtime Max Concurrent Predictions = **1**.
+
+Generation remains frozen:
+- temperature 0.0
+- seed 42
+- max output tokens 1024
+- accepted evidence-backed JSON schema
+- entry-level verbatim grounding filter
+
+Interruption recovery is enabled with `resume=true`; successful extraction tasks are not rerun after a restart.
 
 Files:
-- config: `config/phase10_hardware_preflight.toml`
-- helpers: `src/pure_recommender/analysis/hardware_preflight.py`
-- runner: `scripts/run_phase10_hardware_preflight.py`
-- safe wrapper: `scripts/run_phase10_hardware_preflight_safe.py`
-- tests: `tests/test_hardware_preflight.py`
-- protocol: `docs/PHASE10_HARDWARE_PREFLIGHT_PROTOCOL.md`
-- local output: `outputs/phase10_hardware_preflight_v1/`
+- config: `config/phase10_confirmatory_review_extractor.toml`
+- guarded runner: `scripts/run_phase10_confirmatory_review_extractor_safe.py`
+- local output: `outputs/phase10_confirmatory_review_extractor_v1/`
 
 ## Scientific labeling
-The frozen 20-user pilot remains the original reproduction result. The future 150-user confirmatory result, if executed, is a separate prospective evaluation and must be reported regardless of statistical significance. Runtime scheduling is selected before confirmatory outcomes are inspected and cannot be changed afterward based on NDCG.
+The 20-user pilot remains the original reproduction result. The 150-user confirmatory result is a separate prospective evaluation and must be reported regardless of statistical significance. Runtime scheduling was selected before confirmatory effectiveness outputs were inspected.
 
 ## Next stage
-Run the complete unit-test suite, then Phase 10A once. Review/freeze the concurrency decision. Only then build and run the Phase 10B confirmatory executor against the immutable Phase 9 manifests.
+Restore **LM Studio Max Concurrent Predictions = 1**, keep all other validated runtime settings unchanged, run the full unit-test suite, then execute Phase 10B1. Review/freeze its 1,067 extraction results before preparing the Profile Updater stage.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
