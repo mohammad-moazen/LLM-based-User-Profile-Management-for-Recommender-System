@@ -1,0 +1,65 @@
+# Phase 9 freezes the NEW-user confirmatory cohort before any new model output is observed.
+# This stage performs deterministic data/session design only and makes zero LLM calls.
+
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+pilot_sessions_path = "outputs/phase1/sessions.jsonl.gz"
+
+[cohort]
+# Phase 8 practical planning target. These are 150 NEW users; the original 20
+# pilot users are excluded from the confirmatory analysis and are not rerun.
+new_users = 150
+min_history = 3
+user_selection_seed = 20260905
+candidate_size = 20
+candidate_seed = 42
+expected_pilot_users = 20
+
+[confirmatory]
+primary_method = "PURE"
+primary_baseline = "Recency-Focused"
+primary_metric = "NDCG@10"
+alpha = 0.05
+two_sided = true
+target_power = 0.80
+
+# Frozen reference accounting from the accepted 20-user runs. These values are
+# used only for transparent compute/token planning. They are not assumed to be
+# exact predictions for the new cohort because prompt lengths depend on history.
+[reference.review_extractor]
+requests = 134
+total_tokens = 97350
+latency_seconds = 724.6502214999709
+
+[reference.profile_updater]
+requests = 134
+total_tokens = 161457
+latency_seconds = 408.766377
+
+[reference.pure]
+sessions = 94
+requests = 95
+total_tokens = 108825
+latency_seconds = 205.9349
+
+[reference.recency]
+sessions = 94
+requests = 94
+total_tokens = 64703
+latency_seconds = 161.87709469999754
+
+[reference.sequential]
+sessions = 94
+requests = 94
+total_tokens = 60625
+latency_seconds = 128.739
+
+[reference.icl]
+sessions = 94
+requests = 94
+total_tokens = 66909
+latency_seconds = 100.29218599999967
+
+[output]
+directory = "outputs/phase9_confirmatory_cohort_v1"
