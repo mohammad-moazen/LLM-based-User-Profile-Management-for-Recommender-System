@@ -1,40 +1,52 @@
 {
   "state": "RESULT",
-  "experiment": "phase3_review_extractor",
+  "experiment": "phase10_confirmatory_review_extractor_v1",
   "summary": {
-    "component": "Review Extractor",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "frozen_sessions": 767,
-    "required_unique_extractions": 1067,
-    "requested_extractions": 1067,
+    "status": "PASS",
+    "phase9_freeze": {
+      "users": 150,
+      "sessions": 767,
+      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859",
+      "required_extractions": 1067
+    },
+    "runtime_max_concurrent_predictions": 1,
+    "required_extractions": 1067,
     "successful_extractions": 1067,
     "failed_extractions": 0,
-    "users_in_successful_extractions": 150,
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 1024,
-      "seed": 42,
-      "structured_output": "evidence_backed_json_schema",
-      "grounding_validation": "entry_level_verbatim_evidence_filter"
-    },
-    "extracted_entry_counts": {
-      "likes": 1895,
-      "dislikes": 783,
-      "key_features": 1309
-    },
-    "rejected_unsupported_entries": 263,
-    "usage_totals": {
-      "prompt_tokens": 581301,
-      "completion_tokens": 175122,
-      "total_tokens": 756423
-    },
-    "latency": {
-      "total_seconds": 4103.018150999957,
-      "mean_seconds": 3.845377835988713
-    },
-    "status": "PASS"
-  },
-  "pilot_rows": [],
-  "errors": []
+    "source_summary": {
+      "component": "Review Extractor",
+      "model": "llama-3.2-3b-instruct-uncensored",
+      "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+      "frozen_sessions": 767,
+      "required_unique_extractions": 1067,
+      "requested_extractions": 1067,
+      "successful_extractions": 1067,
+      "failed_extractions": 0,
+      "users_in_successful_extractions": 150,
+      "generation": {
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "seed": 42,
+        "structured_output": "evidence_backed_json_schema",
+        "grounding_validation": "entry_level_verbatim_evidence_filter"
+      },
+      "extracted_entry_counts": {
+        "likes": 1895,
+        "dislikes": 783,
+        "key_features": 1309
+      },
+      "rejected_unsupported_entries": 263,
+      "usage_totals": {
+        "prompt_tokens": 581301,
+        "completion_tokens": 175122,
+        "total_tokens": 756423
+      },
+      "latency": {
+        "total_seconds": 4103.018150999957,
+        "mean_seconds": 3.845377835988713
+      },
+      "status": "PASS"
+    }
+  }
 }
