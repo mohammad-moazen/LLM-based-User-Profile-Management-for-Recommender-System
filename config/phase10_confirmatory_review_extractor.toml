@@ -1,0 +1,25 @@
+# Phase 10B1 — Confirmatory Review Extractor on the frozen Phase 9 cohort.
+#
+# This stage consumes the immutable Phase 9 session manifest. It must not
+# regenerate users or candidates. The safe wrapper verifies both Phase 9 SHA256
+# fingerprints before the first LLM call.
+
+[input]
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase9_confirmatory_cohort_v1/sessions.jsonl.gz"
+
+[experiment]
+# 0 = every unique historical review required by the frozen 767 sessions.
+max_extractions = 0
+# Resume is enabled so an interrupted ~1000-call run can continue without
+# re-running already successful extraction tasks.
+resume = true
+fail_fast = false
+
+[generation]
+temperature = 0.0
+max_tokens = 1024
+seed = 42
+
+[output]
+directory = "outputs/phase10_confirmatory_review_extractor_v1"
