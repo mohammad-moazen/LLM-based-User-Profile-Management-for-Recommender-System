@@ -1,27 +1,5 @@
 {
-  "state": "RESULT",
-  "experiment": "phase8_power_analysis_v1",
-  "summary": {
-    "status": "PASS",
-    "llm_calls": 0,
-    "pilot_users": 20,
-    "alpha": 0.05,
-    "two_sided": true,
-    "primary_baseline": "Recency-Focused",
-    "primary_k": 10,
-    "primary_target_power": 0.8,
-    "pilot_mean_delta": 0.06542480125013969,
-    "pilot_sd_delta": 0.2567801793599952,
-    "pilot_paired_effect_dz": 0.25478914070862463,
-    "raw_required_total_users": 121,
-    "practical_planning_target_total_users": 150,
-    "safety_margin_fraction": 0.2,
-    "future_users_policy": "new_users_only_excluding_original_frozen_20",
-    "interpretation": "planning_estimate_not_guaranteed_significance"
-  },
-  "recommended_uploads_if_detailed_review_is_needed": [
-    "outputs\\phase8_power_analysis_v1\\phase8_report.md",
-    "outputs\\phase8_power_analysis_v1\\power_by_comparison.csv",
-    "outputs\\phase8_power_analysis_v1\\analysis_summary.json"
-  ]
+  "state": "READY",
+  "experiment": "phase9_confirmatory_cohort_design_v1",
+  "note": "Run the Phase 9 cohort-design safe wrapper. This stage performs deterministic design only and makes zero LLM calls."
 }
