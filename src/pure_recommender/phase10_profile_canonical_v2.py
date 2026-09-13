@@ -1,4 +1,4 @@
-"""Homogeneous Phase 10B2 v2 parsing policy for Profile Updater outputs.
+"""Homogeneous Phase 10B2 v2 parsing and fallback policy for Profile Updater outputs.
 
 Only one narrow structural defect is canonicalized: repeated occurrences of the
 same valid ID inside the same category. Profile Updater output is semantically a
@@ -7,8 +7,15 @@ new selection information. Removing only that repeated occurrence preserves the
 selected set exactly.
 
 Everything else remains strict. Unknown IDs, cross-category IDs, wrong keys,
-malformed JSON, invalid types, and empty IDs are rejected. The existing Phase 4
-retention guard still decides which model-requested removals are safe.
+malformed JSON, invalid types, and empty IDs are rejected.
+
+For long prefixes that remain structurally invalid after the frozen retry budget,
+v2 also provides a conservative deterministic fallback. The invalid model output
+is discarded completely. The fallback concatenates the previous safe profile and
+the new extraction and then runs the already-accepted Phase 4 v4 retention guard
+with every entry selected. Therefore it can only collapse exact duplicates or
+remove a shorter same-category entry strictly dominated by richer evidence. It
+never invents or drops unique evidence because of a malformed LLM response.
 """
 
 from __future__ import annotations
@@ -16,10 +23,16 @@ from __future__ import annotations
 import json
 from typing import Mapping
 
-from pure_recommender.pure import UserProfile, parse_profile_update
+from pure_recommender.pure import (
+    UserProfile,
+    apply_retention_guard,
+    concatenate_profile_and_extraction,
+    parse_profile_update,
+)
 from pure_recommender.pure.profile_updater import PROFILE_FIELDS
 
 POLICY_NAME = "exact_duplicate_id_canonicalization_v2"
+FALLBACK_POLICY_NAME = "guard_only_after_invalid_llm_budget_v1"
 
 
 def _extract_json_object(text: str) -> dict[str, object]:
@@ -120,6 +133,26 @@ def parse_profile_update_v2(
     return parsed, removed
 
 
+def deterministic_guard_only_update(
+    previous_profile: UserProfile,
+    new_extraction: Mapping[str, object],
+) -> tuple[UserProfile, UserProfile, dict[str, list[str]], dict[str, list[str]]]:
+    """Conservatively advance one profile without using an invalid LLM output.
+
+    Every concatenated entry is treated as selected. The accepted v4 guard then
+    performs only its deterministic safe operations: exact-duplicate collapse
+    and removal of shorter entries strictly dominated by richer same-category
+    evidence. Unique evidence is preserved.
+    """
+
+    concatenated = concatenate_profile_and_extraction(previous_profile, new_extraction)
+    updated, restored, allowed_removals = apply_retention_guard(
+        concatenated,
+        allowed_profile=concatenated,
+    )
+    return updated, concatenated, restored, allowed_removals
+
+
 def duplicate_count(removed: Mapping[str, int]) -> int:
     """Return the total number of repeated ID occurrences removed."""
 
@@ -127,8 +160,10 @@ def duplicate_count(removed: Mapping[str, int]) -> int:
 
 
 __all__ = [
+    "FALLBACK_POLICY_NAME",
     "POLICY_NAME",
     "canonicalize_exact_duplicate_ids",
+    "deterministic_guard_only_update",
     "duplicate_count",
     "parse_profile_update_v2",
 ]
