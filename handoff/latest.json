@@ -1,74 +1,18 @@
 {
-  "state": "RESULT",
-  "experiment": "phase10_confirmatory_profile_updater_v2",
+  "state": "READY",
+  "experiment": "phase10_confirmatory_profile_updater_v2_continue",
   "confirmatory_recommendation_outcomes_inspected": false,
-  "summary": {
-    "component": "Profile Updater",
-    "run_version": "confirmatory_homogeneous_v2",
-    "status": "INCOMPLETE",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "users": 150,
-    "expected_updates": 1067,
+  "note": "Continue the existing 841 valid v2 profile states under the frozen 8192-token runtime. Primary updater semantics are unchanged. If a task cannot yield a usable primary result, discard the failed output and use the conservative preserve-all-then-guard-v4 fallback. Do not increase LM Studio context mid-cohort.",
+  "resume_from": {
     "successful_updates": 841,
-    "failed_updates": 1,
-    "usage_totals": {
-      "prompt_tokens": 942920,
-      "completion_tokens": 92123,
-      "total_tokens": 1035043,
-      "max_prompt_tokens": 8048,
-      "max_prompt_task_id": "A6UW2KEO5UOSA:27"
-    },
-    "guard_totals": {
-      "restored_entries": 5736,
-      "allowed_removals": 62
-    },
-    "canonicalization": {
-      "policy": "exact_duplicate_id_canonicalization_v2",
-      "responses_with_exact_duplicate_ids": 2,
-      "duplicate_id_occurrences_removed": 2,
-      "semantic_note": "Repeated occurrences of the same valid selected ID are collapsed; no distinct ID is ignored or inferred."
-    },
-    "latency": {
-      "total_seconds": 2553.956817399914,
-      "mean_seconds": 3.03680953317469,
-      "median_seconds": 1.9569367000003695
-    },
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 1024,
-      "seed": 42
-    },
-    "runtime_max_concurrent_predictions": 1,
-    "validation": "exact_duplicate_id_canonicalization_then_strict_parser_plus_information_preserving_guard_v4",
-    "retry_policy": {
-      "max_attempts_per_task": 3,
-      "no_semantic_response_repair": true
-    },
-    "homogeneity": {
-      "v1_states_reused": false,
-      "all_1067_states_must_use_same_v2_policy": true,
-      "introduced_before_confirmatory_recommendation_outcomes": true
-    },
-    "resume": {
-      "enabled": true,
-      "new_llm_calls_this_invocation": 844,
-      "new_successes_this_invocation": 841
-    },
-    "phase9_freeze": {
-      "users": 150,
-      "sessions": 767,
-      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
-      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
-    },
-    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v2\\profile_states.jsonl"
+    "expected_updates": 1067,
+    "unresolved_task": "A6UW2KEO5UOSA:28",
+    "observed_error": "request 8277 tokens exceeds context 8192"
   },
-  "unresolved": [
-    {
-      "task_id": "A6UW2KEO5UOSA:28",
-      "user_id": "A6UW2KEO5UOSA",
-      "interaction_position": 28,
-      "error": "Local LLM server returned HTTP 400 for http://127.0.0.1:1234/v1/chat/completions: {\"error\":\"Engine protocol predict request returned 400: {\\\"error\\\":{\\\"code\\\":400,\\\"message\\\":\\\"request (8277 tokens) exceeds the available context size (8192 tokens), try increasing it\\\",\\\"type\\\":\\\"exceed_context_size_error\\\",\\\"n_prompt_tokens\\\":8277,\\\"n_ctx\\\":8192}}\"}"
-    }
-  ]
+  "runner": "scripts/run_phase10_confirmatory_profile_updater_v2_continue_safe.py",
+  "protocol": "docs/PHASE10_PROFILE_UPDATER_CONTEXT_FALLBACK_PROTOCOL.md",
+  "phase9_freeze": {
+    "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+    "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+  }
 }
