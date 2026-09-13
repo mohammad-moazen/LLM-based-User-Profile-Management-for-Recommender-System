@@ -1,24 +1,50 @@
 {
-  "state": "READY",
+  "state": "RESULT",
   "experiment": "phase10_confirmatory_recency_v1",
-  "note": "Phase 10B2 Profile Updater is PASS/FROZEN at 1067/1067 with zero unresolved latest failures. The primary analysis constants are frozen before any confirmatory recommender call. Phase 10B3 Recency-Focused is ready on the immutable 767 Phase 9 sessions. Aggregate effectiveness metrics will be withheld from Git handoff until PURE also completes.",
-  "profile_updater": {
+  "confirmatory_effectiveness_metrics_inspected": false,
+  "summary": {
+    "baseline": "Recency-Focused",
+    "experiment": "phase10_confirmatory_recency_v1",
+    "run_version": "confirmatory_recency_hybrid_v1",
     "status": "PASS",
-    "successful_updates": 1067,
-    "failed_updates": 0,
-    "conservative_fallback_latest_states": 7,
-    "duplicate_id_canonicalized_responses": 2
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "successful_sessions": 767,
+    "failed_sessions": 0,
+    "users_in_successful_sessions": 150,
+    "protocol_counts": {
+      "direct_primary_successes": 766,
+      "fallback_successes": 1
+    },
+    "usage_totals_all_requests": {
+      "prompt_tokens": 504013,
+      "completion_tokens": 36602,
+      "total_tokens": 540615,
+      "request_count": 768
+    },
+    "latency": {
+      "total_session_seconds": 1030.8058325001402,
+      "mean_session_seconds": 1.3439450228163496,
+      "median_session_seconds": 1.2958731000035186
+    },
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": 42
+    },
+    "runtime_max_concurrent_predictions": 1,
+    "phase9_freeze": {
+      "users": 150,
+      "sessions": 767,
+      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+    },
+    "resume": {
+      "successful_sessions_at_start": 0,
+      "new_successes_this_invocation": 767,
+      "new_llm_calls_this_invocation": 768
+    },
+    "effectiveness_handoff_policy": "aggregate_ndcg_withheld_until_both_primary_methods_complete"
   },
-  "recency": {
-    "sessions": 767,
-    "users": 150,
-    "temperature": 0.0,
-    "max_tokens": 512,
-    "seed": 42,
-    "max_concurrent_predictions": 1,
-    "resume": true,
-    "runner": "scripts/run_phase10_confirmatory_recency_safe.py",
-    "output": "outputs/phase10_confirmatory_recency_v1/"
-  },
-  "confirmatory_effectiveness_metrics_inspected": false
+  "errors": []
 }
