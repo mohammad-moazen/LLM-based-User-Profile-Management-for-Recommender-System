@@ -1,0 +1,19 @@
+# Phase 10B2 — Confirmatory Profile Updater.
+#
+# Consumes only the frozen Phase 10B1 confirmatory Review Extractor artifact.
+# The accepted Phase 4 v4 updater/retention-guard implementation is reused
+# unchanged. Runtime concurrency remains 1 after the Phase 10A repeatability gate.
+
+[input]
+extractions_path = "outputs/phase10_confirmatory_review_extractor_v1/extractions.jsonl"
+
+[experiment]
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 1024
+seed = 42
+
+[output]
+directory = "outputs/phase10_confirmatory_profile_updater_v1"
