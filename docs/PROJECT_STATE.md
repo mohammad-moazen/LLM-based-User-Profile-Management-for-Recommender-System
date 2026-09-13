@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Core reproduction pipeline PASS / FROZEN. Phase 7 deterministic thesis analysis PASS / FROZEN. Phase 8 prospective statistical power analysis is READY. No frozen result will be rerun or altered; Phase 8 is planning-only and uses the existing 20-user outcomes to size a future NEW-user confirmatory cohort.**
+**Core reproduction pipeline PASS / FROZEN. Phase 7 deterministic thesis analysis PASS / FROZEN. Phase 8 prospective statistical power analysis PASS / FROZEN as a planning result. The current frozen 20-user result is unchanged. If a confirmatory extension is executed, the current pre-declared target is a separate cohort of 150 NEW users excluding the original 20.**
 
 Active model used for the frozen experiments: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -130,31 +130,36 @@ Important local Phase 7 files:
 - `outputs/phase7_final_analysis_v1/paired_bootstrap.csv`
 - `outputs/phase7_final_analysis_v1/final_comparison.svg`
 
-## Phase 8 — Prospective statistical power analysis — READY
+## Phase 8 — Prospective statistical power analysis — PASS / FROZEN (planning)
 
-Purpose: estimate the size of a **future new-user confirmatory cohort** without rerunning or changing the frozen 20-user experiment.
+Phase 8 uses the already-frozen Phase 7 user-level outcomes only. It makes **zero LLM calls** and does not rerun or alter the original 20 users.
 
-Pre-declared primary planning endpoint:
+Pre-declared primary endpoint:
 - comparison: **PURE vs Recency-Focused**
 - metric: **NDCG@10**
 - alpha: **0.05, two-sided**
 - target power: **80%**
 - statistical unit: **user**
 
-Phase 8 uses the paired user-level differences from `outputs/phase7_final_analysis_v1/per_user_ndcg.csv` to estimate `d_z`, approximate required sample sizes for 80%/90% power, a sensitivity curve, and a conservative practical target with a 20% safety margin.
+Pilot-informed primary effect:
+- pilot users: 20
+- paired mean delta: **0.06542480125013969**
+- SD of paired user-level deltas: **0.2567801793599952**
+- paired standardized effect `d_z`: **0.25478914070862463**
 
-Critical anti-p-hacking rule: any future confirmatory evaluation must use a deterministic cohort of **new users excluding the original 20**, freeze its sample size and protocol before outcomes are inspected, and report the result regardless of significance. The original frozen cohort must not be rerun until a desired p-value appears.
+Prospective planning result:
+- raw estimated N for 80% power: **121 users**
+- explicit safety margin: **20%**
+- inflated estimate: 145.2
+- practical rounded planning target: **150 users**
 
-Files:
-- config: `config/phase8_power_analysis.toml`
-- analysis helpers: `src/pure_recommender/analysis/power_analysis.py`
-- runner: `scripts/run_phase8_power_analysis.py`
-- safe wrapper: `scripts/run_phase8_power_analysis_safe.py`
-- tests: `tests/test_power_analysis.py`
-- protocol: `docs/PHASE8_POWER_ANALYSIS_PROTOCOL.md`
-- local output: `outputs/phase8_power_analysis_v1/`
+Critical interpretation: because the protocol explicitly excludes the original frozen 20 from the future confirmatory cohort, the current design target means **150 NEW independent users**, not 130 new users plus the old 20. The pilot and confirmatory cohorts remain separate.
 
-Phase 8 makes **zero LLM calls**.
+This is a planning estimate, not a guarantee of statistical significance. The future confirmatory study must be reported regardless of outcome.
+
+Protocol: `docs/PHASE8_POWER_ANALYSIS_PROTOCOL.md`.
+Detailed result: `docs/PHASE8_POWER_ANALYSIS_RESULTS.md`.
+Local output: `outputs/phase8_power_analysis_v1/`.
 
 ## Scientific labeling
 The frozen comparison and analysis are authoritative only for this project's local derivative model, frozen 20-user / 94-session subset, preprocessing policy, candidate sampling, prompts, structured-output validation, and reproduction engineering choices. They must not be presented as an exact reproduction of the paper checkpoint or full-dataset scores.
@@ -162,10 +167,7 @@ The frozen comparison and analysis are authoritative only for this project's loc
 A Phase 8 sample-size estimate is itself uncertain because it is derived from a small pilot. It must be described as a planning estimate, never as a guarantee that a future cohort will be statistically significant.
 
 ## Next stage
-1. Run the full unit-test suite.
-2. Run `python scripts/run_phase8_power_analysis_safe.py`.
-3. Review the Phase 8 handoff and freeze the planning estimate.
-4. Only after the sample-size plan is frozen, decide whether to execute a separate new-user confirmatory expansion.
+Before any new LLM experiment, design and freeze the confirmatory expansion protocol. The current candidate design is a deterministic cohort of **150 new eligible users**, excluding the original 20, with the primary comparison fixed as PURE vs Recency-Focused at NDCG@10. The protocol, sample-selection seed, candidate construction, and all model/runtime settings must be frozen before any new outcome is inspected.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
