@@ -16,7 +16,8 @@ from __future__ import annotations
 import json
 from typing import Mapping
 
-from pure_recommender.pure import PROFILE_FIELDS, UserProfile, parse_profile_update
+from pure_recommender.pure import UserProfile, parse_profile_update
+from pure_recommender.pure.profile_updater import PROFILE_FIELDS
 
 POLICY_NAME = "exact_duplicate_id_canonicalization_v2"
 
