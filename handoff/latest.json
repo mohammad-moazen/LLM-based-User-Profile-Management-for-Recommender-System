@@ -1,68 +1,41 @@
 {
-  "state": "RESULT",
-  "experiment": "phase10_confirmatory_profile_updater_resume_v1",
+  "state": "READY",
+  "experiment": "phase10_confirmatory_profile_updater_v2",
   "confirmatory_recommendation_outcomes_inspected": false,
   "summary": {
-    "component": "Profile Updater",
-    "run_version": "confirmatory_schema_resume_v2",
-    "status": "INCOMPLETE",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "users": 150,
+    "status": "READY",
+    "reason": "Profile Updater v1 was abandoned after a persistent exact duplicate-ID structural defect. v2 restarts all 1067 updates under one homogeneous policy.",
+    "v1_states_reused": false,
+    "expected_users": 150,
     "expected_updates": 1067,
-    "successful_updates": 225,
-    "failed_updates": 1,
-    "usage_totals": {
-      "prompt_tokens": 196914,
-      "completion_tokens": 18646,
-      "total_tokens": 215560,
-      "max_prompt_tokens": 2403,
-      "max_prompt_task_id": "A13D6V53KGHGMC:17"
-    },
-    "guard_totals": {
-      "restored_entries": 1113,
-      "allowed_removals": 14
-    },
-    "latency": {
-      "total_seconds": 503.2976496000156,
-      "mean_seconds": 2.236878442666736,
-      "median_seconds": 1.9157083999998576
-    },
+    "policy": "exact_duplicate_id_canonicalization_v2",
+    "canonicalization_scope": "only repeated occurrences of the same valid selected ID within the same category",
+    "strict_failures_remain": [
+      "unknown_or_cross_category_id",
+      "wrong_keys",
+      "malformed_json",
+      "invalid_types",
+      "retention_guard_failure"
+    ],
     "generation": {
       "temperature": 0.0,
       "max_tokens": 1024,
       "seed": 42
     },
-    "validation": "same_category_id_selection_plus_information_preserving_dominance_guard",
-    "schema_hardening": {
-      "policy": "schema_unique_items_v2",
-      "unique_items": true,
-      "semantic_contract_changed": false,
-      "response_repair": "none",
-      "introduced_before_confirmatory_recommendation_outcomes": true
-    },
-    "recovery": {
-      "response_repair": "none",
-      "reused_successes_at_start": 225,
-      "new_successes": 0,
-      "new_llm_calls": 3,
-      "max_fresh_schema_attempts_per_task": 3,
-      "introduced_before_confirmatory_recommendation_outcomes": true
-    },
-    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v1\\profile_states.jsonl",
+    "runtime_max_concurrent_predictions": 1,
+    "max_attempts_per_task": 3,
+    "output_directory": "outputs/phase10_confirmatory_profile_updater_v2",
     "phase9_freeze": {
       "users": 150,
       "sessions": 767,
       "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
       "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
-    }
-  },
-  "unresolved": [
-    {
-      "task_id": "A1WTMP0BQ76WTZ:12",
-      "user_id": "A1WTMP0BQ76WTZ",
-      "interaction_position": 12,
-      "error": "Profile Updater field 'dislikes' returned duplicate ID: 'D011'"
-    }
-  ]
+    },
+    "run": [
+      "git pull",
+      "$env:PYTHONPATH=\"$PWD\\src\"",
+      "python -m unittest discover -s tests -v",
+      "python scripts/run_phase10_confirmatory_profile_updater_v2_safe.py"
+    ]
+  }
 }
