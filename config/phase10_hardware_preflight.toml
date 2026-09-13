@@ -1,0 +1,31 @@
+# Phase 10A hardware-saturation preflight.
+#
+# IMPORTANT: this stage makes synthetic LLM calls only. It MUST NOT read review,
+# profile, target, or candidate content from the 150-user confirmatory cohort.
+# Its only purpose is to decide whether two concurrent predictions can be used
+# safely for Phase 10 without changing the frozen scientific inputs.
+
+[phase9]
+cohort_users_path = "outputs/phase9_confirmatory_cohort_v1/cohort_users.json"
+sessions_path = "outputs/phase9_confirmatory_cohort_v1/sessions.jsonl.gz"
+cohort_summary_path = "outputs/phase9_confirmatory_cohort_v1/cohort_summary.json"
+expected_cohort_sha256 = "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca"
+expected_sessions_sha256 = "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+expected_users = 150
+expected_sessions = 767
+
+[benchmark]
+probe_count = 8
+synthetic_history_lines = 220
+concurrent_workers = 2
+warmup_requests = 1
+min_throughput_speedup = 1.15
+max_vram_fraction = 0.97
+
+[generation]
+temperature = 0.0
+max_tokens = 256
+seed = 42
+
+[output]
+directory = "outputs/phase10_hardware_preflight_v1"
