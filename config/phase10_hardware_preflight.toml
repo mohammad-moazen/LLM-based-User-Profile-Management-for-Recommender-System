@@ -1,9 +1,16 @@
-# Phase 10A hardware-saturation preflight.
+# Phase 10A hardware-saturation preflight, revision 2 after a pre-outcome
+# infrastructure-only context-capacity failure in the first synthetic probe.
 #
 # IMPORTANT: this stage makes synthetic LLM calls only. It MUST NOT read review,
 # profile, target, or candidate content from the 150-user confirmatory cohort.
-# Its only purpose is to decide whether two concurrent predictions can be used
-# safely for Phase 10 without changing the frozen scientific inputs.
+# Its purpose is to decide whether two concurrent predictions can be used safely
+# for SHORT-CONTEXT Phase 10 lanes without changing scientific inputs.
+#
+# Attempt 1 used 220 synthetic history lines. Sequential execution fit, but the
+# two-worker section exceeded the local engine context budget. Because no
+# confirmatory-cohort LLM call had occurred, revision 2 narrows the synthetic
+# probe to a deliberately short-context workload. It does NOT authorize
+# two-worker execution for the long-context Profile Updater.
 
 [phase9]
 cohort_users_path = "outputs/phase9_confirmatory_cohort_v1/cohort_users.json"
@@ -16,7 +23,7 @@ expected_sessions = 767
 
 [benchmark]
 probe_count = 8
-synthetic_history_lines = 220
+synthetic_history_lines = 70
 concurrent_workers = 2
 warmup_requests = 1
 min_throughput_speedup = 1.15
@@ -24,8 +31,11 @@ max_vram_fraction = 0.97
 
 [generation]
 temperature = 0.0
-max_tokens = 256
+# Use the larger 1024-token budget so the short-context concurrency probe is
+# conservative with respect to Review Extractor output capacity. Actual
+# structured probe responses are normally much shorter.
+max_tokens = 1024
 seed = 42
 
 [output]
-directory = "outputs/phase10_hardware_preflight_v1"
+directory = "outputs/phase10_hardware_preflight_v1_attempt2"
