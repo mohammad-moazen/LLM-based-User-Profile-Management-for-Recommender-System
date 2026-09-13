@@ -37,6 +37,7 @@ class Phase10ProfileCanonicalV2Tests(unittest.TestCase):
         )
         self.assertEqual(profile, self.allowed)
         self.assertEqual(removed["dislikes"], 1)
+        self.assertEqual(removed["_structural_fallback"], 0)
         self.assertEqual(duplicate_count(removed), 1)
 
     def test_first_occurrence_order_is_preserved(self):
@@ -47,23 +48,35 @@ class Phase10ProfileCanonicalV2Tests(unittest.TestCase):
         self.assertEqual(normalized, '{"likes":["L002","L001"],"dislikes":[],"key_features":[]}')
         self.assertEqual(removed["likes"], 1)
 
-    def test_unknown_id_raises(self):
-        with self.assertRaises(ValueError):
-            parse_profile_update_v2(
-                '{"likes":["L999"],"dislikes":[],"key_features":[]}',
-                allowed_profile=self.allowed,
-                id_map=self.id_map,
-            )
+    def test_structural_failure_discards_output_and_preserves_safe_profile(self):
+        profile, marker = parse_profile_update_v2(
+            "not-json-at-all",
+            allowed_profile=self.allowed,
+            id_map=self.id_map,
+        )
+        self.assertEqual(profile, self.allowed)
+        self.assertEqual(marker["_structural_fallback"], 1)
+        self.assertEqual(duplicate_count(marker), 0)
 
-    def test_cross_category_id_raises(self):
-        with self.assertRaises(ValueError):
-            parse_profile_update_v2(
-                '{"likes":["D001"],"dislikes":[],"key_features":[]}',
-                allowed_profile=self.allowed,
-                id_map=self.id_map,
-            )
+    def test_unknown_id_uses_conservative_fallback(self):
+        profile, marker = parse_profile_update_v2(
+            '{"likes":["L999"],"dislikes":[],"key_features":[]}',
+            allowed_profile=self.allowed,
+            id_map=self.id_map,
+        )
+        self.assertEqual(profile, self.allowed)
+        self.assertEqual(marker["_structural_fallback"], 1)
 
-    def test_wrong_keys_raise(self):
+    def test_cross_category_id_uses_conservative_fallback(self):
+        profile, marker = parse_profile_update_v2(
+            '{"likes":["D001"],"dislikes":[],"key_features":[]}',
+            allowed_profile=self.allowed,
+            id_map=self.id_map,
+        )
+        self.assertEqual(profile, self.allowed)
+        self.assertEqual(marker["_structural_fallback"], 1)
+
+    def test_wrong_keys_still_raise_in_low_level_canonicalizer(self):
         with self.assertRaises(ValueError):
             canonicalize_exact_duplicate_ids(
                 '{"likes":[],"dislikes":[],"features":[]}', id_map=self.id_map
