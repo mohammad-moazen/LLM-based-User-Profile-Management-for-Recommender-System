@@ -1,67 +1,14 @@
 {
-  "state": "RESULT",
-  "experiment": "phase9_confirmatory_cohort_design_v1",
-  "summary": {
-    "experiment": "phase9_confirmatory_cohort_design_v1",
-    "status": "PASS",
-    "llm_calls": 0,
+  "state": "READY",
+  "experiment": "phase10_confirmatory_execution_prep",
+  "note": "Phase 9 confirmatory cohort design passed and is frozen: 150 new users, 767 sessions, zero pilot overlap. Prepare Phase 10 to consume the frozen Phase 9 manifests and verify both SHA256 freeze identifiers before any LLM call.",
+  "phase9_freeze": {
     "new_users": 150,
-    "pilot_users_excluded": 20,
-    "pilot_overlap": 0,
-    "eligible_users_total": 54451,
-    "first_new_user_eligible_rank": 21,
-    "last_new_user_eligible_rank": 170,
     "recommendation_sessions": 767,
     "profile_evidence_events": 1067,
-    "history_length": {
-      "min": 4,
-      "max": 35,
-      "mean": 8.113333333333333
-    },
-    "candidate_size": 20,
-    "candidate_seed": 42,
-    "user_selection_seed": 20260905,
     "cohort_manifest_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
     "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859",
-    "primary_endpoint": {
-      "method": "PURE",
-      "baseline": "Recency-Focused",
-      "metric": "NDCG@10",
-      "alpha": 0.05,
-      "two_sided": true,
-      "target_power": 0.8
-    },
-    "cost_estimate": {
-      "interpretation": "empirical_reference_estimate_not_runtime_guarantee",
-      "monetary_api_cost": "not_applicable_local_inference",
-      "primary_confirmatory_scope": {
-        "methods": [
-          "PURE",
-          "Recency-Focused"
-        ],
-        "estimated_llm_requests": 3676.159574468085,
-        "estimated_total_tokens": 3476713.6606859323,
-        "estimated_inference_hours": 3.340619579135052
-      },
-      "optional_secondary_methods": {
-        "methods": [
-          "Sequential",
-          "ICL"
-        ],
-        "additional_estimated_llm_requests": 1534.0,
-        "additional_estimated_total_tokens": 1040623.170212766,
-        "additional_estimated_inference_hours": 0.5191102826891246
-      },
-      "full_four_method_scope": {
-        "estimated_llm_requests": 5210.159574468085,
-        "estimated_total_tokens": 4517336.830898698,
-        "estimated_inference_hours": 3.8597298618241767
-      }
-    }
-  },
-  "recommended_uploads_if_detailed_review_is_needed": [
-    "outputs\\phase9_confirmatory_cohort_v1\\cohort_summary.json",
-    "outputs\\phase9_confirmatory_cohort_v1\\cost_estimate.json",
-    "outputs\\phase9_confirmatory_cohort_v1\\phase9_report.md"
-  ]
+    "primary_comparison": "PURE_vs_Recency-Focused",
+    "primary_metric": "NDCG@10"
+  }
 }
