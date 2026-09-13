@@ -20,12 +20,12 @@ import time
 from typing import Any, Mapping
 
 from pure_recommender.pure import (
-    PROFILE_FIELDS,
     apply_retention_guard,
     build_profile_updater_messages,
     parse_profile_update,
     profile_updater_response_format,
 )
+from pure_recommender.pure.profile_updater import PROFILE_FIELDS
 
 RECOVERY_POLICY = "schema_unique_items_v2"
 MAX_SCHEMA_ATTEMPTS_PER_TASK = 3
