@@ -1,10 +1,68 @@
 {
-  "state": "READY",
-  "experiment": "phase10_confirmatory_profile_updater_schema_resume_v2",
+  "state": "RESULT",
+  "experiment": "phase10_confirmatory_profile_updater_resume_v1",
   "confirmatory_recommendation_outcomes_inspected": false,
-  "note": "Repeated duplicate-ID failure persisted across three fresh retries. Recovery v2 now enforces the already-existing no-duplicate contract with JSON Schema uniqueItems=true, reuses all 225 accepted states, performs no response repair, and continues before any confirmatory recommendation outcome is inspected. Run scripts/run_phase10_confirmatory_profile_updater_resume_safe.py after pulling the latest branch.",
-  "reused_accepted_states": 225,
-  "failed_task": "A1WTMP0BQ76WTZ:12",
-  "schema_hardening": "uniqueItems=true for likes/dislikes/key_features ID arrays",
-  "max_fresh_schema_attempts_per_task": 3
+  "summary": {
+    "component": "Profile Updater",
+    "run_version": "confirmatory_schema_resume_v2",
+    "status": "INCOMPLETE",
+    "model": "llama-3.2-3b-instruct-uncensored",
+    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+    "users": 150,
+    "expected_updates": 1067,
+    "successful_updates": 225,
+    "failed_updates": 1,
+    "usage_totals": {
+      "prompt_tokens": 196914,
+      "completion_tokens": 18646,
+      "total_tokens": 215560,
+      "max_prompt_tokens": 2403,
+      "max_prompt_task_id": "A13D6V53KGHGMC:17"
+    },
+    "guard_totals": {
+      "restored_entries": 1113,
+      "allowed_removals": 14
+    },
+    "latency": {
+      "total_seconds": 503.2976496000156,
+      "mean_seconds": 2.236878442666736,
+      "median_seconds": 1.9157083999998576
+    },
+    "generation": {
+      "temperature": 0.0,
+      "max_tokens": 1024,
+      "seed": 42
+    },
+    "validation": "same_category_id_selection_plus_information_preserving_dominance_guard",
+    "schema_hardening": {
+      "policy": "schema_unique_items_v2",
+      "unique_items": true,
+      "semantic_contract_changed": false,
+      "response_repair": "none",
+      "introduced_before_confirmatory_recommendation_outcomes": true
+    },
+    "recovery": {
+      "response_repair": "none",
+      "reused_successes_at_start": 225,
+      "new_successes": 0,
+      "new_llm_calls": 3,
+      "max_fresh_schema_attempts_per_task": 3,
+      "introduced_before_confirmatory_recommendation_outcomes": true
+    },
+    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v1\\profile_states.jsonl",
+    "phase9_freeze": {
+      "users": 150,
+      "sessions": 767,
+      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+    }
+  },
+  "unresolved": [
+    {
+      "task_id": "A1WTMP0BQ76WTZ:12",
+      "user_id": "A1WTMP0BQ76WTZ",
+      "interaction_position": 12,
+      "error": "Profile Updater field 'dislikes' returned duplicate ID: 'D011'"
+    }
+  ]
 }
