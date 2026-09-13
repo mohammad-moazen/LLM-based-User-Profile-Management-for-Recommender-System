@@ -1,72 +1,24 @@
 {
-  "state": "RESULT",
-  "experiment": "phase10_confirmatory_profile_updater_v2_continue",
-  "confirmatory_recommendation_outcomes_inspected": false,
-  "summary": {
-    "component": "Profile Updater",
-    "run_version": "confirmatory_v2_with_conservative_fallback",
+  "state": "READY",
+  "experiment": "phase10_confirmatory_recency_v1",
+  "note": "Phase 10B2 Profile Updater is PASS/FROZEN at 1067/1067 with zero unresolved latest failures. The primary analysis constants are frozen before any confirmatory recommender call. Phase 10B3 Recency-Focused is ready on the immutable 767 Phase 9 sessions. Aggregate effectiveness metrics will be withheld from Git handoff until PURE also completes.",
+  "profile_updater": {
     "status": "PASS",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "users": 150,
-    "expected_updates": 1067,
     "successful_updates": 1067,
     "failed_updates": 0,
-    "usage_totals": {
-      "prompt_tokens": 1143765,
-      "completion_tokens": 112462,
-      "total_tokens": 1256227,
-      "max_prompt_tokens": 8048,
-      "max_prompt_task_id": "A6UW2KEO5UOSA:27"
-    },
-    "guard_totals": {
-      "restored_entries": 6868,
-      "allowed_removals": 74
-    },
-    "canonicalization": {
-      "policy": "exact_duplicate_id_canonicalization_v2",
-      "responses_with_exact_duplicate_ids": 2,
-      "duplicate_id_occurrences_removed": 2,
-      "semantic_note": "Repeated occurrences of the same valid selected ID are collapsed; no distinct ID is ignored or inferred."
-    },
-    "latency": {
-      "total_seconds": 3102.3361340998963,
-      "mean_seconds": 2.9075315221179907,
-      "median_seconds": 1.8486092999955872
-    },
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 1024,
-      "seed": 42
-    },
-    "runtime": {
-      "context_length": 8192,
-      "max_concurrent_predictions": 1
-    },
-    "fallback": {
-      "policy": "preserve_all_then_guard_v4",
-      "latest_states_using_fallback": 7,
-      "fallbacks_this_invocation": 7,
-      "reasons": [
-        "frozen_context_overflow",
-        "frozen_context_overflow_previously_observed"
-      ],
-      "semantic_effect": "preserves all distinct evidence; may reduce profile compaction only"
-    },
-    "homogeneity_note": "Previously successful v2 states remain valid because the primary path is unchanged; the fallback is conditional and only applies when the primary path cannot yield a usable state.",
-    "resume": {
-      "successful_states_at_start": 841,
-      "new_llm_calls_this_invocation": 225,
-      "new_successes_this_invocation": 226
-    },
-    "phase9_freeze": {
-      "users": 150,
-      "sessions": 767,
-      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
-      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
-    },
-    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v2\\profile_states.jsonl",
-    "confirmatory_recommendation_outcomes_inspected": false
+    "conservative_fallback_latest_states": 7,
+    "duplicate_id_canonicalized_responses": 2
   },
-  "unresolved": []
+  "recency": {
+    "sessions": 767,
+    "users": 150,
+    "temperature": 0.0,
+    "max_tokens": 512,
+    "seed": 42,
+    "max_concurrent_predictions": 1,
+    "resume": true,
+    "runner": "scripts/run_phase10_confirmatory_recency_safe.py",
+    "output": "outputs/phase10_confirmatory_recency_v1/"
+  },
+  "confirmatory_effectiveness_metrics_inspected": false
 }
