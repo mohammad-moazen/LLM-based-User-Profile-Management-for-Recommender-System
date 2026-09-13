@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Phase 1 PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender PASS / FROZEN. Phase 6A Sequential PASS / FROZEN. Phase 6B Recency-Focused PASS / FROZEN. Phase 6C ICL PASS / FROZEN. Final controlled Sequential vs Recency-Focused vs ICL vs PURE comparison PASS / FROZEN.**
+**Phase 1 PASS / FROZEN. Phase 3 Review Extractor PASS / FROZEN. Phase 4 Profile Updater PASS / FROZEN. Phase 5 PURE Recommender PASS / FROZEN. Phase 6A Sequential PASS / FROZEN. Phase 6B Recency-Focused PASS / FROZEN. Phase 6C ICL PASS / FROZEN. Final controlled Sequential vs Recency-Focused vs ICL vs PURE comparison PASS / FROZEN. Phase 7 deterministic thesis analysis is READY.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -126,11 +126,37 @@ Recency-Focused is the strongest baseline at all four cutoffs. Relative PURE imp
 
 Final comparison record: `docs/PHASE6_FINAL_COMPARISON.md`.
 
+## Phase 7 — Deterministic thesis analysis — READY
+
+Phase 7 is post-hoc analysis only and makes **zero LLM calls**. It consumes the four authoritative local result directories above and fails loudly unless all methods contain the exact same 94 successful sessions and 20 users.
+
+Analysis outputs:
+- final comparison CSV;
+- PURE absolute/relative improvements;
+- per-user NDCG table;
+- paired user-level bootstrap with 10,000 deterministic replicates;
+- PURE user-level win/tie/loss counts;
+- target-rank summaries;
+- token/latency comparison;
+- dependency-free SVG comparison chart;
+- Persian Markdown analysis report;
+- compact machine-readable summary.
+
+Files:
+- config: `config/phase7_final_analysis.toml`
+- analysis helpers: `src/pure_recommender/analysis/final_results.py`
+- runner: `scripts/run_phase7_final_analysis.py`
+- safe wrapper: `scripts/run_phase7_final_analysis_safe.py`
+- local output: `outputs/phase7_final_analysis_v1/`
+- protocol: `docs/PHASE7_FINAL_ANALYSIS_PROTOCOL.md`
+
+The bootstrap resamples users, not sessions, to match the project's equal-user evaluation aggregation. Its confidence intervals describe uncertainty within this frozen 20-user subset and must not be presented as proof of population-level significance.
+
 ## Scientific labeling
 The final comparison is authoritative for this project's local derivative model, frozen 20-user subset, preprocessing policy, candidate sampling, and reproduction engineering choices. It must not be presented as an exact reproduction of the paper's checkpoint or full-dataset scores.
 
 ## Next stage
-The experimental reproduction pipeline and controlled method-comparison table are complete. Future work should focus on thesis writing, statistical/qualitative analysis, visualization, limitations, and any explicitly planned ablation or extension rather than changing frozen experiment outputs.
+Run Phase 7 once. After its handoff is reviewed, use the generated tables/statistics/figure to draft the thesis evaluation/results chapter. No further LLM recommendation run is required unless a new ablation or extension is explicitly added.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
