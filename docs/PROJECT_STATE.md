@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Core reproduction pipeline PASS / FROZEN. Phase 7 thesis analysis PASS / FROZEN. Phase 8 power planning PASS / FROZEN. Phase 9 confirmatory NEW-user cohort design PASS / FROZEN. Phase 10A hardware preflight completed: the two-worker runtime was rejected on repeatability grounds. Phase 10B1 confirmatory Review Extractor is READY.**
+**Core reproduction pipeline PASS / FROZEN. Phase 7 thesis analysis PASS / FROZEN. Phase 8 power planning PASS / FROZEN. Phase 9 confirmatory NEW-user cohort design PASS / FROZEN. Phase 10A hardware preflight COMPLETE. Phase 10B1 confirmatory Review Extractor PASS / FROZEN. Phase 10B2 confirmatory Profile Updater is READY.**
 
 Active model: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -74,21 +74,13 @@ Freeze identifiers:
 - cohort manifest SHA256: `72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca`
 - sessions/candidates SHA256: `0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859`
 
-Empirical one-worker estimate for required PURE + Recency-Focused scope:
-- estimated LLM requests: **~3,676**
-- estimated total reported tokens: **~3.48 million**
-- estimated local inference time: **~3.34 hours**
-
 Protocol: `docs/PHASE9_CONFIRMATORY_COHORT_PROTOCOL.md`.
 Detailed result: `docs/PHASE9_CONFIRMATORY_COHORT_RESULTS.md`.
 Authoritative local output: `outputs/phase9_confirmatory_cohort_v1/`.
 
-## Phase 10A — Hardware saturation preflight — COMPLETE
-
-The revised synthetic preflight completed successfully and made zero confirmatory-cohort LLM calls.
+## Phase 10A — Hardware saturation preflight — COMPLETE / concurrency=2 REJECTED
 
 Measured two-worker candidate:
-- probes: 8
 - sequential wall time: **27.7429 s**
 - two-worker wall time: **12.9188 s**
 - throughput speedup: **2.1475x**
@@ -98,46 +90,64 @@ Measured two-worker candidate:
 - mean sampled GPU utilization: **79.86%**
 - peak temperature: **66 C**
 
-Decision: **two workers REJECTED** because exact-output repeatability failed the pre-declared 100% gate. The confirmatory execution returns to **Max Concurrent Predictions = 1**. The speed gain is not used because runtime-dependent model-output changes would weaken the controlled comparison.
+Decision: **Max Concurrent Predictions = 1** for confirmatory execution. Two workers were faster but failed the pre-declared exact-output repeatability gate.
 
 Detailed result: `docs/PHASE10_HARDWARE_PREFLIGHT_RESULTS.md`.
-Protocol: `docs/PHASE10_HARDWARE_PREFLIGHT_PROTOCOL.md`.
 
-## Phase 10 — Confirmatory execution
+## Phase 10B1 — Confirmatory Review Extractor — PASS / FROZEN
 
-Protocol: `docs/PHASE10_CONFIRMATORY_EXECUTION_PROTOCOL.md`.
+Authoritative local output:
+`outputs/phase10_confirmatory_review_extractor_v1/`
 
-### Phase 10B1 — Review Extractor — READY
+Result:
+- required unique extractions: **1,067**
+- successful extractions: **1,067**
+- failed extractions: **0**
+- users represented: **150**
+- likes / dislikes / key features: **1,895 / 783 / 1,309**
+- rejected unsupported entries: **263**
+- prompt / completion / total tokens: **581,301 / 175,122 / 756,423**
+- total LLM latency: **4,103.018 s** (~68.38 min)
+- mean latency: **3.845 s**
+- generation: temperature 0.0, max_tokens 1024, seed 42
+- runtime Max Concurrent Predictions: **1**
 
-This is the first stage that will process the 150-user confirmatory cohort with the LLM.
+Detailed result: `docs/PHASE10_CONFIRMATORY_REVIEW_EXTRACTOR_RESULTS.md`.
 
-Guards before the first call:
-- recompute/verify both frozen Phase 9 SHA256 identifiers;
-- require exactly 150 users and 767 frozen sessions;
-- require exactly **1,067** historical Review Extractor tasks;
-- consume the frozen Phase 9 sessions directly;
-- no user/candidate regeneration;
-- runtime Max Concurrent Predictions = **1**.
+## Phase 10B2 — Confirmatory Profile Updater — READY
 
-Generation remains frozen:
-- temperature 0.0
-- seed 42
-- max output tokens 1024
-- accepted evidence-backed JSON schema
-- entry-level verbatim grounding filter
+Input source:
+`outputs/phase10_confirmatory_review_extractor_v1/extractions.jsonl`
 
-Interruption recovery is enabled with `resume=true`; successful extraction tasks are not rerun after a restart.
+The stage reuses the accepted Phase 4 v4 updater and information-preserving retention guard unchanged.
+
+Preflight requirements:
+- re-verify both Phase 9 SHA256 fingerprints;
+- require Phase 10B1 status PASS;
+- require exactly 1,067 successful source extractions across 150 users and zero source failures;
+- require the frozen Phase 10B1 generation settings;
+- keep Max Concurrent Predictions = **1**.
+
+Expected workload:
+- users: **150**
+- profile updates: **1,067**
+- generation: temperature 0.0, max_tokens 1024, seed 42
+- accepted deletion policy: remove only exact duplicates or same-category overlaps dominated by richer retained evidence
+- prefix contiguity required for every user
 
 Files:
-- config: `config/phase10_confirmatory_review_extractor.toml`
-- guarded runner: `scripts/run_phase10_confirmatory_review_extractor_safe.py`
-- local output: `outputs/phase10_confirmatory_review_extractor_v1/`
+- config: `config/phase10_confirmatory_profile_updater.toml`
+- guarded runner: `scripts/run_phase10_confirmatory_profile_updater_safe.py`
+- protocol: `docs/PHASE10_CONFIRMATORY_PROFILE_UPDATER_PROTOCOL.md`
+- local output: `outputs/phase10_confirmatory_profile_updater_v1/`
+
+Important operational note: the accepted full Profile Updater runner does not implement task-level resume. Run this stage on stable AC power and do not intentionally interrupt it.
 
 ## Scientific labeling
-The 20-user pilot remains the original reproduction result. The 150-user confirmatory result is a separate prospective evaluation and must be reported regardless of statistical significance. Runtime scheduling was selected before confirmatory effectiveness outputs were inspected.
+The 20-user pilot remains the original reproduction result. The 150-user confirmatory result is a separate prospective evaluation and must be reported regardless of statistical significance. The primary confirmatory comparison remains **PURE vs Recency-Focused at user-level NDCG@10, alpha 0.05 two-sided**.
 
 ## Next stage
-Restore **LM Studio Max Concurrent Predictions = 1**, keep all other validated runtime settings unchanged, run the full unit-test suite, then execute Phase 10B1. Review/freeze its 1,067 extraction results before preparing the Profile Updater stage.
+Keep LM Studio on the accepted one-worker runtime profile, run the full unit-test suite, then execute Phase 10B2. Freeze all 1,067 profile states before preparing either confirmatory recommender. No confirmatory NDCG should be inspected before profile construction is complete.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
