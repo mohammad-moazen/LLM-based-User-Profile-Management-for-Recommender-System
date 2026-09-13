@@ -1,0 +1,7 @@
+# Phase 10B2 — Profile Updater Recovery Protocol
+
+The first confirmatory Profile Updater execution stopped after 225 successful updates because task `A1WTMP0BQ76WTZ:12` returned the same `dislikes` ID (`D011`) twice. The strict parser correctly rejected that response. The diagnostic step made zero LLM calls and no confirmatory recommendation outcome has been inspected.
+
+Recovery is purely operational. All 225 successful states are reused exactly as stored and are not rerun. The failed task, and any later task that produces an invalid response, may receive at most three fresh requests using the identical model, prompt, response schema, temperature 0, max_tokens 1024, and seed 42. No malformed response is edited, deduplicated, repaired, or converted into a valid state. A task advances only when a fresh response passes the same strict parser and the same v4 retention guard used before the interruption.
+
+Chronological dependence remains unchanged: updates are serial within each user, and a later state is never built until the immediately preceding state is valid. Max Concurrent Predictions remains 1. If three fresh attempts fail for one task, the run remains INCOMPLETE and stops. This recovery rule was fixed before any confirmatory PURE or Recency recommendation ranking was generated or inspected.
