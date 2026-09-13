@@ -1,11 +1,7 @@
 {
-  "state": "COMPLETE",
-  "message": "Phase 6 final controlled comparison is complete and frozen. No further model run is required for the core reproduction pipeline.",
-  "final_comparison": {
-    "Sequential": {"ndcg@1": 0.07833333333333334, "ndcg@5": 0.19119338415282436, "ndcg@10": 0.22985864604036338, "ndcg@20": 0.3732857741554989},
-    "Recency-Focused": {"ndcg@1": 0.095, "ndcg@5": 0.20650509939667167, "ndcg@10": 0.25295161727915483, "ndcg@20": 0.3857992031968749},
-    "ICL": {"ndcg@1": 0.06166666666666667, "ndcg@5": 0.184046153450114, "ndcg@10": 0.24444677165894083, "ndcg@20": 0.3687308921232335},
-    "PURE": {"ndcg@1": 0.10425070028011205, "ndcg@5": 0.24355349242822116, "ndcg@10": 0.3183764185292945, "ndcg@20": 0.4160225252419735}
-  },
-  "next_stage": "thesis_analysis_and_writing"
+  "state": "READY",
+  "message": "Final controlled comparison is frozen. Phase 7 deterministic thesis analysis is ready and makes zero LLM calls.",
+  "next_expected_experiment": "phase7_final_analysis_v1",
+  "command": "python scripts/run_phase7_final_analysis_safe.py",
+  "expected_output": "outputs/phase7_final_analysis_v1/"
 }
