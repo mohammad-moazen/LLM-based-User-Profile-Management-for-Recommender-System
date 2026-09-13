@@ -1,0 +1,1 @@
+Phase 10B2 v2 may use a conservative guard-only fallback after repeated invalid local-model outputs. Invalid generated content is discarded, and unique evidence is preserved.
