@@ -1,14 +1,11 @@
 {
   "state": "READY",
-  "experiment": "phase10_confirmatory_execution_prep",
-  "note": "Phase 9 confirmatory cohort design passed and is frozen: 150 new users, 767 sessions, zero pilot overlap. Prepare Phase 10 to consume the frozen Phase 9 manifests and verify both SHA256 freeze identifiers before any LLM call.",
+  "experiment": "phase10_hardware_preflight_v1",
+  "note": "Set LM Studio Max Concurrent Predictions to 2, keep all other runtime settings unchanged, run the full tests, then run scripts/run_phase10_hardware_preflight_safe.py. The benchmark uses synthetic prompts only and makes zero confirmatory-cohort LLM calls.",
   "phase9_freeze": {
     "new_users": 150,
     "recommendation_sessions": 767,
-    "profile_evidence_events": 1067,
     "cohort_manifest_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
-    "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859",
-    "primary_comparison": "PURE_vs_Recency-Focused",
-    "primary_metric": "NDCG@10"
+    "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
   }
 }
