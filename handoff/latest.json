@@ -1,27 +1,12 @@
 {
-  "state": "DIAGNOSTIC",
-  "experiment": "phase10_confirmatory_profile_updater_diagnostic_v1",
-  "confirmatory_recommendation_outcomes_inspected": false,
-  "llm_calls_made": 0,
-  "rows_total": 226,
-  "ok_rows": 225,
-  "error_rows": 1,
-  "summary_status": "INCOMPLETE",
-  "latest_errors": [
-    {
-      "task_id": "A1WTMP0BQ76WTZ:12",
-      "user_id": "A1WTMP0BQ76WTZ",
-      "interaction_position": 12,
-      "error": "Profile Updater field 'dislikes' returned duplicate ID: 'D011'",
-      "latency_seconds": 7.851162199996907,
-      "raw_response_prefix": "{\n  \"likes\": [\n    \"L001\",\n    \"L002\",\n    \"L003\",\n    \"L004\",\n    \"L005\",\n    \"L006\",\n    \"L007\",\n    \"L008\",\n    \"L009\",\n    \"L010\",\n    \"L011\",\n    \"L012\",\n    \"L013\",\n    \"L014\",\n    \"L015\",\n    \"L016\",\n    \"L017\",\n    \"L018\",\n    \"L019\",\n    \"L020\",\n    \"L021\",\n    \"L022\"\n  ],\n  \"dislikes\": [\n    \"D001\",\n    \"D002\",\n    \"D003\",\n    \"D004\",\n    \"D005\",\n    \"D006\",\n    \"D007\",\n    \"D008\",\n    \"D009\",\n    \"D010\",\n    \"D011\",\n    \"D011\"\n  ],\n  \"key_features\": [\n    \"K001\",\n    \"K002\",\n    \"K003\",\n    \"K004\",\n    \"K005\",\n    \"K006\",\n    \"K007\",\n    \"K008\",\n    \"K009\",\n    \"K010\",\n    \"K012\",\n    \"K013\",\n    \"K014\",\n    \"K015\",\n    \"K016\",\n    \"K017\",\n    \"K018\",\n    \"K019\",\n    \"K020\",\n    \"K021\",\n    \"K022\"\n  ]\n}",
-      "raw_response_length": 723
-    }
-  ],
-  "previous_success": {
-    "task_id": "A1WTMP0BQ76WTZ:11",
-    "user_id": "A1WTMP0BQ76WTZ",
-    "interaction_position": 11,
-    "finish_reason": "stop"
-  }
+  "state": "READY",
+  "experiment": "phase10_confirmatory_profile_updater_resume_v1",
+  "note": "Diagnostic confirmed one strict-parser failure caused by duplicate Profile Updater ID D011 at A1WTMP0BQ76WTZ:12. No confirmatory recommendation outcome has been inspected. Resume reuses prior successful states, performs no response repair, and allows at most three fresh identical requests for a non-successful task.",
+  "existing_successful_updates": 225,
+  "existing_failed_updates": 1,
+  "failed_task_id": "A1WTMP0BQ76WTZ:12",
+  "failed_reason": "duplicate dislikes ID D011",
+  "max_recovery_attempts_per_task": 3,
+  "response_repair": "none",
+  "runtime_max_concurrent_predictions": 1
 }
