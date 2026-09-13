@@ -1,50 +1,29 @@
 {
-  "state": "RESULT",
-  "experiment": "phase10_confirmatory_recency_v1",
-  "confirmatory_effectiveness_metrics_inspected": false,
-  "summary": {
-    "baseline": "Recency-Focused",
-    "experiment": "phase10_confirmatory_recency_v1",
-    "run_version": "confirmatory_recency_hybrid_v1",
+  "state": "READY",
+  "experiment": "phase10_confirmatory_pure_v1",
+  "note": "Confirmatory Recency completed operationally: 767/767 sessions, 150 users, 0 failures, 1 structural fallback. Aggregate Recency effectiveness metrics remain withheld. Phase 10B4 PURE is ready on the identical frozen Phase 9 sessions and final Phase 10B2 profile states.",
+  "recency_operational": {
     "status": "PASS",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
     "successful_sessions": 767,
     "failed_sessions": 0,
-    "users_in_successful_sessions": 150,
-    "protocol_counts": {
-      "direct_primary_successes": 766,
-      "fallback_successes": 1
-    },
-    "usage_totals_all_requests": {
-      "prompt_tokens": 504013,
-      "completion_tokens": 36602,
-      "total_tokens": 540615,
-      "request_count": 768
-    },
-    "latency": {
-      "total_session_seconds": 1030.8058325001402,
-      "mean_session_seconds": 1.3439450228163496,
-      "median_session_seconds": 1.2958731000035186
-    },
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 512,
-      "seed": 42
-    },
-    "runtime_max_concurrent_predictions": 1,
-    "phase9_freeze": {
-      "users": 150,
-      "sessions": 767,
-      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
-      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
-    },
-    "resume": {
-      "successful_sessions_at_start": 0,
-      "new_successes_this_invocation": 767,
-      "new_llm_calls_this_invocation": 768
-    },
-    "effectiveness_handoff_policy": "aggregate_ndcg_withheld_until_both_primary_methods_complete"
+    "direct_primary_successes": 766,
+    "fallback_successes": 1,
+    "effectiveness_metrics_inspected": false
   },
-  "errors": []
+  "pure_protocol": {
+    "sessions": 767,
+    "users": 150,
+    "profile_alignment": "target_position_minus_one",
+    "temperature": 0.0,
+    "max_tokens": 512,
+    "seed": 42,
+    "max_concurrent_predictions": 1,
+    "resume": true,
+    "hybrid_output_policy": "direct_complete_ranking_then_one_fresh_rankmap_on_structural_failure_only",
+    "effectiveness_handoff": "withheld_until_phase10c"
+  },
+  "phase9_freeze": {
+    "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+    "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
+  }
 }
