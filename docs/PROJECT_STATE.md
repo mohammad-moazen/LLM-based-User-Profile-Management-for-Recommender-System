@@ -7,7 +7,7 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Core reproduction pipeline PASS / FROZEN. Phase 7 deterministic thesis analysis PASS / FROZEN. The project is now in thesis writing, interpretation, visualization, limitations, and optional-extension stage. No additional recommender-model run is required for the frozen core results.**
+**Core reproduction pipeline PASS / FROZEN. Phase 7 deterministic thesis analysis PASS / FROZEN. Phase 8 prospective statistical power analysis is READY. No frozen result will be rerun or altered; Phase 8 is planning-only and uses the existing 20-user outcomes to size a future NEW-user confirmatory cohort.**
 
 Active model used for the frozen experiments: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
@@ -52,13 +52,6 @@ For target position `t`, Phase 5 uses only profile state `(user_id, t-1)`.
 
 ## Phase 5 PURE Recommender — PASS / FROZEN
 Authoritative output: `outputs/phase5_pure_recommender_hybrid_final_v4/`
-
-Final hybrid mechanical-output policy:
-- direct numbered ranking first;
-- strict complete-permutation parser;
-- one fresh rank-map fallback only after structural direct-parser failure;
-- malformed direct response is not shown to fallback;
-- no post-generation candidate repair.
 
 Execution:
 - requested/successful/failed: 94 / 94 / 0
@@ -133,21 +126,46 @@ Detailed frozen record: `docs/PHASE7_FINAL_ANALYSIS_RESULTS.md`.
 Important local Phase 7 files:
 - `outputs/phase7_final_analysis_v1/analysis_summary.json`
 - `outputs/phase7_final_analysis_v1/analysis_report.md`
+- `outputs/phase7_final_analysis_v1/per_user_ndcg.csv`
 - `outputs/phase7_final_analysis_v1/paired_bootstrap.csv`
 - `outputs/phase7_final_analysis_v1/final_comparison.svg`
 
+## Phase 8 — Prospective statistical power analysis — READY
+
+Purpose: estimate the size of a **future new-user confirmatory cohort** without rerunning or changing the frozen 20-user experiment.
+
+Pre-declared primary planning endpoint:
+- comparison: **PURE vs Recency-Focused**
+- metric: **NDCG@10**
+- alpha: **0.05, two-sided**
+- target power: **80%**
+- statistical unit: **user**
+
+Phase 8 uses the paired user-level differences from `outputs/phase7_final_analysis_v1/per_user_ndcg.csv` to estimate `d_z`, approximate required sample sizes for 80%/90% power, a sensitivity curve, and a conservative practical target with a 20% safety margin.
+
+Critical anti-p-hacking rule: any future confirmatory evaluation must use a deterministic cohort of **new users excluding the original 20**, freeze its sample size and protocol before outcomes are inspected, and report the result regardless of significance. The original frozen cohort must not be rerun until a desired p-value appears.
+
+Files:
+- config: `config/phase8_power_analysis.toml`
+- analysis helpers: `src/pure_recommender/analysis/power_analysis.py`
+- runner: `scripts/run_phase8_power_analysis.py`
+- safe wrapper: `scripts/run_phase8_power_analysis_safe.py`
+- tests: `tests/test_power_analysis.py`
+- protocol: `docs/PHASE8_POWER_ANALYSIS_PROTOCOL.md`
+- local output: `outputs/phase8_power_analysis_v1/`
+
+Phase 8 makes **zero LLM calls**.
+
 ## Scientific labeling
-The final comparison and analysis are authoritative only for this project's local derivative model, frozen 20-user / 94-session subset, preprocessing policy, candidate sampling, prompts, structured-output validation, and reproduction engineering choices. They must not be presented as an exact reproduction of the paper checkpoint or full-dataset scores.
+The frozen comparison and analysis are authoritative only for this project's local derivative model, frozen 20-user / 94-session subset, preprocessing policy, candidate sampling, prompts, structured-output validation, and reproduction engineering choices. They must not be presented as an exact reproduction of the paper checkpoint or full-dataset scores.
+
+A Phase 8 sample-size estimate is itself uncertain because it is derived from a small pilot. It must be described as a planning estimate, never as a guarantee that a future cohort will be statistically significant.
 
 ## Next stage
-Proceed to thesis writing and presentation of results:
-1. methodology/implementation chapter from the frozen protocol;
-2. evaluation/results chapter using Phase 6 and Phase 7;
-3. limitations and threats to validity;
-4. comparison with the source paper without claiming exact reproduction;
-5. optional ablation or second-dataset experiment only if explicitly desired.
-
-No further core-model execution is required.
+1. Run the full unit-test suite.
+2. Run `python scripts/run_phase8_power_analysis_safe.py`.
+3. Review the Phase 8 handoff and freeze the planning estimate.
+4. Only after the sample-size plan is frozen, decide whether to execute a separate new-user confirmatory expansion.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
