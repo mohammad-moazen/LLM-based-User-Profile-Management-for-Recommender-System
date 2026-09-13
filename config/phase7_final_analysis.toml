@@ -1,0 +1,27 @@
+# Phase 7 deterministic post-hoc analysis of the frozen final comparison.
+#
+# No LLM request is made in this phase. The script reads only the already-frozen
+# final result artifacts produced by Phases 5 and 6, validates that all methods
+# contain the exact same 94 sessions, and generates thesis-ready tables plus a
+# user-level paired bootstrap uncertainty analysis.
+
+[inputs.Sequential]
+directory = "outputs/phase6_sequential_hybrid_final_v1"
+
+[inputs.Recency-Focused]
+directory = "outputs/phase6_recency_hybrid_final_v1"
+
+[inputs.ICL]
+directory = "outputs/phase6_icl_hybrid_final_v1"
+
+[inputs.PURE]
+directory = "outputs/phase5_pure_recommender_hybrid_final_v4"
+
+[analysis]
+expected_sessions = 94
+expected_users = 20
+bootstrap_repetitions = 10000
+bootstrap_seed = 20260913
+
+[output]
+directory = "outputs/phase7_final_analysis_v1"
