@@ -7,11 +7,11 @@ Step-by-step Python reproduction and local extension of PURE from **LLM-based Us
 `feature/pure-phase1`
 
 ## Current phase
-**Core reproduction pipeline PASS / FROZEN. Phase 7 thesis analysis PASS / FROZEN. Phase 8 power planning PASS / FROZEN. Phase 9 confirmatory NEW-user cohort design is READY. No new LLM output is generated in Phase 9; it freezes 150 new users and their sessions before any confirmatory model run.**
+**Core reproduction pipeline PASS / FROZEN. Phase 7 thesis analysis PASS / FROZEN. Phase 8 power planning PASS / FROZEN. Phase 9 confirmatory NEW-user cohort design PASS / FROZEN. The next stage is preparation of a separate Phase 10 confirmatory executor that must consume the frozen Phase 9 manifests without reselecting users or candidates.**
 
 Active model used for the frozen experiments: local derivative `llama-3.2-3b-instruct-uncensored`, GGUF Q8_0 (~3.84 GB). Results are local derivative-model reproduction results, not exact paper-checkpoint reproduction.
 
-## Frozen workload and runtime
+## Frozen pilot workload and runtime
 - pilot workload: 20 users, 94 continuous recommendation sessions
 - 20 candidates/session; candidate seed 42
 - Context Length 8192
@@ -94,41 +94,45 @@ The original 20 pilot users are not counted in the confirmatory 150 and are not 
 Protocol: `docs/PHASE8_POWER_ANALYSIS_PROTOCOL.md`.
 Detailed result: `docs/PHASE8_POWER_ANALYSIS_RESULTS.md`.
 
-## Phase 9 — Confirmatory NEW-user cohort design — READY
+## Phase 9 — Confirmatory NEW-user cohort design — PASS / FROZEN
 
-Purpose: freeze the confirmatory sampling frame and candidate sessions **before any new LLM outcome is observed**.
+Phase 9 made **zero LLM calls** and froze the confirmatory cohort before any new effectiveness outcome was observed.
 
-Frozen design intent:
-- 150 new eligible users only;
-- original 20 pilot users explicitly excluded;
-- reuse Phase 1 user-selection seed `20260905`;
-- verify the pilot is exactly the first 20 users under that deterministic ordering;
-- select the next 150 eligible users;
-- reuse candidate size 20 and candidate seed 42;
-- generate every continuous next-item session after three observed interactions;
-- full-history exclusion for all 19 negative candidates;
-- primary confirmatory methods: PURE and Recency-Focused only;
-- primary endpoint remains NDCG@10, alpha 0.05 two-sided;
-- Sequential and ICL are optional secondary methods.
+Frozen confirmatory design:
+- new users: **150**
+- original pilot users excluded: **20**
+- pilot overlap: **0**
+- total eligible users in cleaned dataset: **54,451**
+- selected eligible-user ranks: **21 through 170** under the frozen deterministic order
+- user-selection seed: `20260905`
+- candidate size: **20**
+- candidate seed: `42`
+- generated recommendation sessions: **767**
+- profile evidence events: **1,067**
+- history length min/mean/max: **4 / 8.1133 / 35**
+- primary methods: **PURE and Recency-Focused**
+- primary endpoint: **NDCG@10**, alpha 0.05 two-sided
 
-Phase 9 makes **zero LLM calls**. It writes local cohort/session manifests plus SHA256 freeze identifiers and an empirical compute/token estimate based on the accepted pilot runs.
+Freeze identifiers:
+- cohort manifest SHA256: `72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca`
+- sessions/candidates SHA256: `0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859`
 
-Files:
-- config: `config/phase9_confirmatory_cohort.toml`
-- helpers: `src/pure_recommender/analysis/confirmatory_cohort.py`
-- runner: `scripts/run_phase9_confirmatory_cohort_design.py`
-- safe wrapper: `scripts/run_phase9_confirmatory_cohort_design_safe.py`
-- tests: `tests/test_confirmatory_cohort.py`
-- protocol: `docs/PHASE9_CONFIRMATORY_COHORT_PROTOCOL.md`
-- local output: `outputs/phase9_confirmatory_cohort_v1/`
+Empirical compute estimate for the required primary scope (PURE + Recency-Focused):
+- estimated LLM requests: **~3,676.16**
+- estimated total reported tokens: **~3.48 million**
+- estimated local inference time: **~3.34 hours**
 
-Acceptance requires exactly 150 new users, zero pilot overlap, valid deterministic sessions/candidates, written cohort/session hashes, and zero LLM calls.
+Optional Sequential + ICL secondary scope adds roughly 1,534 requests and 0.52 hours; the full four-method estimate is ~5,210 requests and ~3.86 hours.
+
+Protocol: `docs/PHASE9_CONFIRMATORY_COHORT_PROTOCOL.md`.
+Detailed result: `docs/PHASE9_CONFIRMATORY_COHORT_RESULTS.md`.
+Authoritative local output: `outputs/phase9_confirmatory_cohort_v1/`.
 
 ## Scientific labeling
-The frozen pilot comparison is authoritative only for this project's local derivative model, frozen 20-user / 94-session subset, preprocessing, candidate sampling, prompts, and engineering choices. A future 150-user confirmatory result must be reported separately and regardless of whether it reaches statistical significance.
+The frozen 20-user pilot remains the original reproduction result. Phase 9 is a prospective design artifact only; it does not change the pilot's effectiveness conclusions. Any future 150-user confirmatory result must be reported separately and regardless of whether it reaches statistical significance.
 
 ## Next stage
-Run Phase 9 once and review/freeze its user/session hashes and compute estimate. Only after Phase 9 is frozen should a separate confirmatory execution stage be prepared. The confirmatory executor must consume the frozen Phase 9 manifests and must not reselect users based on outcomes.
+Prepare Phase 10 as a separate confirmatory execution pipeline. Before the first Phase 10 model call, the executor must verify both Phase 9 SHA256 freeze identifiers, consume the frozen `cohort_users.json` and `sessions.jsonl.gz` directly, keep the model/prompt/runtime/output-validation protocols unchanged, and preserve the pre-declared primary test PURE vs Recency-Focused at NDCG@10. No user, session, candidate, endpoint, or analysis rule may be changed after inspecting confirmatory outcomes without declaring a new experiment version.
 
 ## Working rule
 Raw datasets, processed artifacts, model weights, caches, and large outputs remain local and untracked. Do not overwrite the user's local uncommitted README changes.
