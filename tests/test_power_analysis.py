@@ -46,7 +46,17 @@ class PowerAnalysisTests(unittest.TestCase):
             "u3": {"PURE": {10: 0.4}, "Recency-Focused": {10: 0.4}},
         }
         deltas = paired_user_deltas(per_user, baseline="Recency-Focused", k=10)
-        self.assertEqual(deltas, [0.2, 0.1, 0.0])
+
+        # Binary floating-point subtraction does not guarantee exact decimal
+        # representations (for example, 0.6 - 0.4 may be stored as
+        # 0.19999999999999996). The scientific requirement here is numerical
+        # equality to the expected paired user-level deltas, not bitwise decimal
+        # equality, so compare with unittest's floating-point-aware assertion.
+        expected = [0.2, 0.1, 0.0]
+        self.assertEqual(len(deltas), len(expected))
+        for actual, wanted in zip(deltas, expected):
+            self.assertAlmostEqual(actual, wanted)
+
         summary = summarize_paired_effect(deltas)
         self.assertAlmostEqual(float(summary["mean_delta"]), 0.1)
         self.assertAlmostEqual(float(summary["sd_delta"]), 0.1)
