@@ -1,61 +1,66 @@
 {
   "state": "RESULT",
-  "experiment": "phase4_profile_updater_full_v4",
+  "experiment": "phase10_confirmatory_profile_updater_v1",
   "summary": {
-    "component": "Profile Updater",
-    "run_version": "full_v4",
-    "model": "llama-3.2-3b-instruct-uncensored",
-    "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "source_extractor_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_review_extractor_v1\\extractions.jsonl",
+    "status": "INCOMPLETE",
+    "phase9_freeze": {
+      "users": 150,
+      "sessions": 767,
+      "cohort_sha256": "72701badc5ae325472a59846b4ba5b1dc0bc8c2351d181a607ae7b7fa87aebca",
+      "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859",
+      "source_extractions": 1067
+    },
+    "runtime_max_concurrent_predictions": 1,
     "users": 150,
     "expected_updates": 1067,
     "successful_updates": 225,
     "failed_updates": 1,
-    "prefix_contiguity_invariant": "PASS",
-    "generation": {
-      "temperature": 0.0,
-      "max_tokens": 1024,
-      "seed": 42,
-      "structured_output": "dynamic_same_category_entry_id_schema"
-    },
-    "validation": "same_category_id_selection_plus_information_preserving_dominance_guard",
-    "deletion_policy": "remove_only_exact_duplicates_or_overlaps_dominated_by_richer_same_category_evidence",
-    "guard_totals": {
-      "restored_entries": 1113,
-      "allowed_removals": 14
-    },
-    "entry_compaction": {
-      "cumulative_raw_unique_prefix_entries": 3563,
-      "cumulative_safe_prefix_entries": 3508,
-      "prefix_entry_compaction_ratio": 0.015436429974740373,
-      "final_raw_unique_entries": 770,
-      "final_safe_entries": 751,
-      "final_entry_compaction_ratio": 0.024675324675324628,
-      "note": "Entry-count compression is diagnostic only; recommender prompt-token compression is measured later."
-    },
-    "usage_totals": {
-      "prompt_tokens": 196914,
-      "completion_tokens": 18646,
-      "total_tokens": 215560,
-      "max_prompt_tokens": 2403,
-      "max_prompt_task_id": "A13D6V53KGHGMC:17"
-    },
-    "latency": {
-      "total_seconds": 503.2976496000156,
-      "mean_seconds": 2.236878442666736,
-      "median_seconds": 1.9157083999998576
-    },
-    "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v1\\profile_states.jsonl",
-    "status": "INCOMPLETE"
-  },
-  "errors": [
-    {
-      "task_id": "A1WTMP0BQ76WTZ:12",
-      "user_id": "A1WTMP0BQ76WTZ",
-      "interaction_position": 12,
-      "error": "Profile Updater field 'dislikes' returned duplicate ID: 'D011'",
-      "raw_response": "{\n  \"likes\": [\n    \"L001\",\n    \"L002\",\n    \"L003\",\n    \"L004\",\n    \"L005\",\n    \"L006\",\n    \"L007\",\n    \"L008\",\n    \"L009\",\n    \"L010\",\n    \"L011\",\n    \"L012\",\n    \"L013\",\n    \"L014\",\n    \"L015\",\n    \"L016\",\n    \"L017\",\n    \"L018\",\n    \"L019\",\n    \"L020\",\n    \"L021\",\n    \"L022\"\n  ],\n  \"dislikes\": [\n    \"D001\",\n    \"D002\",\n    \"D003\",\n    \"D004\",\n    \"D005\",\n    \"D006\",\n    \"D007\",\n    \"D008\",\n    \"D009\",\n    \"D010\",\n    \"D011\",\n    \"D011\"\n  ],\n  \"key_features\": [\n    \"K001\",\n    \"K002\",\n    \"K003\",\n    \"K004\",\n    \"K005\",\n    \"K006\",\n    \"K007\",\n    \"K008\",\n    \"K009\",\n    \"K010\",\n    \"K012\",\n    \"K013\",\n    \"K014\",\n    \"K015\",\n    \"K016\",\n    \"K017\",\n    \"K018\",\n    \"K019\",\n    \"K020\",\n    \"K021\",\n    \"K022\"\n  ]\n}",
-      "latency_seconds": 7.851162199996907
+    "source_summary": {
+      "component": "Profile Updater",
+      "run_version": "full_v4",
+      "model": "llama-3.2-3b-instruct-uncensored",
+      "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
+      "source_extractor_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_review_extractor_v1\\extractions.jsonl",
+      "users": 150,
+      "expected_updates": 1067,
+      "successful_updates": 225,
+      "failed_updates": 1,
+      "prefix_contiguity_invariant": "PASS",
+      "generation": {
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "seed": 42,
+        "structured_output": "dynamic_same_category_entry_id_schema"
+      },
+      "validation": "same_category_id_selection_plus_information_preserving_dominance_guard",
+      "deletion_policy": "remove_only_exact_duplicates_or_overlaps_dominated_by_richer_same_category_evidence",
+      "guard_totals": {
+        "restored_entries": 1113,
+        "allowed_removals": 14
+      },
+      "entry_compaction": {
+        "cumulative_raw_unique_prefix_entries": 3563,
+        "cumulative_safe_prefix_entries": 3508,
+        "prefix_entry_compaction_ratio": 0.015436429974740373,
+        "final_raw_unique_entries": 770,
+        "final_safe_entries": 751,
+        "final_entry_compaction_ratio": 0.024675324675324628,
+        "note": "Entry-count compression is diagnostic only; recommender prompt-token compression is measured later."
+      },
+      "usage_totals": {
+        "prompt_tokens": 196914,
+        "completion_tokens": 18646,
+        "total_tokens": 215560,
+        "max_prompt_tokens": 2403,
+        "max_prompt_task_id": "A13D6V53KGHGMC:17"
+      },
+      "latency": {
+        "total_seconds": 503.2976496000156,
+        "mean_seconds": 2.236878442666736,
+        "median_seconds": 1.9157083999998576
+      },
+      "state_artifact": "D:\\Recommendation System\\LLM-based User Profile Management for Recommender\\LLM-based-User-Profile-Management-for-Recommender-System\\outputs\\phase10_confirmatory_profile_updater_v1\\profile_states.jsonl",
+      "status": "INCOMPLETE"
     }
-  ]
+  }
 }
