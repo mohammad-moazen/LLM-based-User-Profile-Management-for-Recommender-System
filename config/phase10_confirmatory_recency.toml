@@ -1,0 +1,17 @@
+[input]
+items_path = "outputs/phase1/items.jsonl.gz"
+interactions_path = "outputs/phase1/interactions.jsonl.gz"
+sessions_path = "outputs/phase9_confirmatory_cohort_v1/sessions.jsonl.gz"
+
+[experiment]
+max_sessions = 0
+resume = true
+fail_fast = true
+
+[generation]
+temperature = 0.0
+max_tokens = 512
+seed = 42
+
+[output]
+directory = "outputs/phase10_confirmatory_recency_v1"
