@@ -1,0 +1,21 @@
+from __future__ import annotations
+
+PRIMARY_METHOD_A = "PURE"
+PRIMARY_METHOD_B = "Recency-Focused"
+PRIMARY_METRIC = "NDCG@10"
+PRIMARY_UNIT = "user"
+PRIMARY_TEST = "paired_two_sided_t"
+PRIMARY_ALPHA = 0.05
+PRIMARY_USERS = 150
+PRIMARY_CONFIDENCE = 0.95
+
+__all__ = [
+    "PRIMARY_METHOD_A",
+    "PRIMARY_METHOD_B",
+    "PRIMARY_METRIC",
+    "PRIMARY_UNIT",
+    "PRIMARY_TEST",
+    "PRIMARY_ALPHA",
+    "PRIMARY_USERS",
+    "PRIMARY_CONFIDENCE",
+]
