@@ -9,26 +9,26 @@
     "status": "INCOMPLETE",
     "model": "llama-3.2-3b-instruct-uncensored",
     "model_alignment": "derivative_local_model_not_exact_paper_checkpoint",
-    "successful_sessions": 642,
+    "successful_sessions": 766,
     "failed_sessions": 1,
-    "users_in_successful_sessions": 125,
+    "users_in_successful_sessions": 150,
     "profile_state_alignment": "target_position_minus_one",
     "sessions_using_profile_fallback_state": 7,
     "protocol_counts": {
-      "direct_primary_successes": 633,
-      "fallback_successes": 9
+      "direct_primary_successes": 756,
+      "fallback_successes": 10
     },
     "usage_totals_all_requests": {
-      "prompt_tokens": 727356,
-      "completion_tokens": 47604,
-      "total_tokens": 774960,
-      "request_count": 651,
+      "prompt_tokens": 840416,
+      "completion_tokens": 56795,
+      "total_tokens": 897211,
+      "request_count": 776,
       "max_prompt_tokens": 6392
     },
     "latency": {
-      "total_session_seconds": 1415.6754837000626,
-      "mean_session_seconds": 2.2051019995328076,
-      "median_session_seconds": 2.028207150000526
+      "total_session_seconds": 1673.4837692000624,
+      "mean_session_seconds": 2.184704659530108,
+      "median_session_seconds": 2.0197143499972867
     },
     "generation": {
       "temperature": 0.0,
@@ -43,9 +43,9 @@
       "sessions_sha256": "0d00f4c4358d50608b47461df820ab09229dd75b7db3950a1cb369f309c6e859"
     },
     "resume": {
-      "successful_sessions_at_start": 0,
-      "new_successes_this_invocation": 642,
-      "new_llm_calls_this_invocation": 653
+      "successful_sessions_at_start": 642,
+      "new_successes_this_invocation": 124,
+      "new_llm_calls_this_invocation": 127
     },
     "effectiveness_handoff_policy": "aggregate_ndcg_withheld_until_phase10c"
   },
