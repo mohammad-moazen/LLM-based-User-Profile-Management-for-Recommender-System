@@ -39,7 +39,11 @@ class Phase10ConfirmatoryPureContractTests(unittest.TestCase):
     def test_confirmatory_pure_config(self):
         config = load_phase5_config(REPO_ROOT / "config/phase10_confirmatory_pure.toml")
         self.assertEqual(config.experiment.max_sessions, 0)
-        self.assertTrue(config.experiment.fail_fast)
+        # Operational continuation after the first structural fallback failure is
+        # deliberately non-fail-fast so the remaining frozen sessions can run.
+        # This changes only execution control; prompt, parser, candidates,
+        # generation settings, and scoring remain frozen.
+        self.assertFalse(config.experiment.fail_fast)
         self.assertEqual(config.generation.temperature, 0.0)
         self.assertEqual(config.generation.max_tokens, 512)
         self.assertEqual(config.generation.seed, 42)
