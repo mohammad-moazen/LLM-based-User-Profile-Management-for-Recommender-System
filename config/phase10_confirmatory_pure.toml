@@ -7,7 +7,10 @@ profile_states_path = "outputs/phase10_confirmatory_profile_updater_v2/profile_s
 [experiment]
 max_sessions = 0
 resume = true
-fail_fast = true
+# Operational continuation only: retain strict scoring/validation, but do not stop the
+# remaining frozen cohort when one session has an unscorable structural model output.
+# Failed sessions remain failures and are not repaired, imputed, or excluded here.
+fail_fast = false
 
 [generation]
 temperature = 0.0
