@@ -47,8 +47,18 @@ class Phase10ConfirmatoryPureContractTests(unittest.TestCase):
         self.assertEqual(config.generation.temperature, 0.0)
         self.assertEqual(config.generation.max_tokens, 512)
         self.assertEqual(config.generation.seed, 42)
-        self.assertTrue(str(config.input.sessions_path).endswith("outputs/phase9_confirmatory_cohort_v1/sessions.jsonl.gz"))
-        self.assertTrue(str(config.input.profile_states_path).endswith("outputs/phase10_confirmatory_profile_updater_v2/profile_states.jsonl"))
+
+        # Compare resolved Paths directly so the contract test is portable across
+        # Windows (backslashes) and POSIX systems (forward slashes).
+        expected_sessions = (
+            REPO_ROOT / "outputs/phase9_confirmatory_cohort_v1/sessions.jsonl.gz"
+        ).resolve()
+        expected_profiles = (
+            REPO_ROOT
+            / "outputs/phase10_confirmatory_profile_updater_v2/profile_states.jsonl"
+        ).resolve()
+        self.assertEqual(config.input.sessions_path, expected_sessions)
+        self.assertEqual(config.input.profile_states_path, expected_profiles)
 
     def test_resume_loader_rejects_mixed_protocol(self):
         with tempfile.TemporaryDirectory() as tmp:
